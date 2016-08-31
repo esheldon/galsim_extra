@@ -1,6 +1,7 @@
 """
 requires ngmix, scipy, scikit-learn
 """
+from __future__ import print_function
 import galsim
 import numpy
 
@@ -19,6 +20,10 @@ def GenGMixND(config, base, value_type):
 
     rng = base['rng']
 
+    seed=rng.raw()
+
+    numpy_rng = numpy.random.RandomState(seed=seed)
+
     req = {
         'weights': list,
         'means': list,
@@ -30,11 +35,19 @@ def GenGMixND(config, base, value_type):
         weights=params['weights'],
         means=params['means'],
         covars=params['covars'],
+        rng=numpy_rng,
     )
 
-    log_value=gm.sample()
+    value=gm.sample()
 
-    value = exp(log_value)
+    islog = base.get('islog',False)
+    islog10 = base.get('islog10',False)
+    if islog:
+        print("converting to linear from log")
+        value = exp(value)
+    elif islog10:
+        print("converting to linear from log10")
+        value = 10.0**value
 
     return value, False
 
