@@ -29,24 +29,35 @@ def GenGMixND(config, base, value_type):
         'means': list,
         'covars': list,
     }
-    params, safe = galsim.config.GetAllParams(config, base, req=req)
+    opt={
+        'islog':bool,
+        'islog10':bool,
+    }
+    params, safe = galsim.config.GetAllParams(
+        config,
+        base,
+        req=req,
+        opt=opt,
+    )
+
+    weights=numpy.array(params['weights'])
+    means=numpy.array(params['means'])
+    covars=numpy.array(params['covars'])
 
     gm = ngmix.gmix.GMixND(
-        weights=params['weights'],
-        means=params['means'],
-        covars=params['covars'],
+        weights=weights,
+        means=means,
+        covars=covars,
         rng=numpy_rng,
     )
 
     value=gm.sample()
 
-    islog = base.get('islog',False)
-    islog10 = base.get('islog10',False)
+    islog = params.get('islog',False)
+    islog10 = params.get('islog10',False)
     if islog:
-        print("converting to linear from log")
         value = exp(value)
     elif islog10:
-        print("converting to linear from log10")
         value = 10.0**value
 
     return value, False
