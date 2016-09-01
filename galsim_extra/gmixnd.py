@@ -32,6 +32,7 @@ def GenGMixND(config, base, value_type):
     opt={
         'islog':bool,
         'islog10':bool,
+        'factor':float,
     }
     params, safe = galsim.config.GetAllParams(
         config,
@@ -39,6 +40,10 @@ def GenGMixND(config, base, value_type):
         req=req,
         opt=opt,
     )
+
+    islog = params.get('islog',False)
+    islog10 = params.get('islog10',False)
+    factor=params.get('factor',None)
 
     weights=numpy.array(params['weights'])
     means=numpy.array(params['means'])
@@ -53,12 +58,13 @@ def GenGMixND(config, base, value_type):
 
     value=gm.sample()
 
-    islog = params.get('islog',False)
-    islog10 = params.get('islog10',False)
     if islog:
         value = exp(value)
     elif islog10:
         value = 10.0**value
+
+    if factor is not None:
+        value *= factor
 
     return value, False
 
