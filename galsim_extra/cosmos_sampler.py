@@ -1,8 +1,6 @@
 import galsim
 import numpy
-import scipy
 import os
-import fitsio
 
 class CosmosSampler(object):
     _req_params = {}
@@ -14,6 +12,10 @@ class CosmosSampler(object):
 
     def __init__(self, min_r50=0.05, max_r50=2.0, min_flux=0.5, max_flux=100,
                  kde_factor=0.01, rng=None):
+        # Make sure required dependencies are checked right away, so the user gets timely
+        # feedback of what this code requires.
+        import scipy
+        import fitsio
         self.r50_range = (min_r50, max_r50)
         self.flux_range = (min_flux, max_flux)
 
@@ -63,6 +65,7 @@ class CosmosSampler(object):
         return data
 
     def _load_data(self):
+        import fitsio
         fname='real_galaxy_catalog_25.2_fits.fits'
         fname=os.path.join(
             #sys.exec_prefix,
