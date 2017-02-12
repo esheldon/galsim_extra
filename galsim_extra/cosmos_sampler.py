@@ -79,7 +79,6 @@ class CosmosSampler(object):
         r50min,r50max=self.r50_sanity_range
         fmin,fmax=self.flux_sanity_range
 
-        print("reading cosmos file:",fname)
         alldata=fitsio.read(fname, lower=True)
         w,=numpy.where(
             (alldata['viable_sersic']==1) &
@@ -88,7 +87,6 @@ class CosmosSampler(object):
             (alldata['flux'][:,0] > fmin) &
             (alldata['flux'][:,0] < fmax)
         )
-        print("kept %d/%d" % (w.size, alldata.size))
 
         self.alldata=alldata[w]
 
@@ -113,14 +111,12 @@ def CosmosR50Flux(config, base, name):
     index, index_key = galsim.config.value._get_index(config, base, False)
 
     if base.get('_cosmos_sampler_index',None) != index:
-        print('sampling for ',name)
         cosmos_sampler = galsim.config.GetInputObj('cosmos_sampler', config, base, name)
         r50, flux = cosmos_sampler.sample()
         base['_cosmos_sampler_r50'] = r50
         base['_cosmos_sampler_flux'] = flux
         base['_cosmos_sampler_index'] = index
     else:
-        print('using cache for ',name)
         r50 = base['_cosmos_sampler_r50']
         flux = base['_cosmos_sampler_flux']
 
