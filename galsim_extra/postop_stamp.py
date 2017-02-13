@@ -9,8 +9,20 @@ class PostOpStampBuilder(galsim.config.StampBuilder):
         return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
 
     def buildProfile(self, config, base, psf, gsparams, logger):
-        obj = super(self.__class__,self).buildProfile(config, base, psf, gsparams, logger)
-        obj, safe = galsim.config.gsobject.TransformObject(obj, config, base, logger)
-        return obj
+        gal = galsim.config.BuildGSObject(base, 'gal', gsparams=gsparams, logger=logger)[0]
+
+        # This line is the change from the normal StampBuilder
+        psf, safe = galsim.config.gsobject.TransformObject(psf, config, base, logger)
+
+        if psf:
+            if gal:
+                return galsim.Convolve(gal,psf)
+            else:
+                return psf
+        else:
+            if gal:
+                return gal
+            else:
+                return None
 
 galsim.config.stamp.RegisterStampType('PostOp', PostOpStampBuilder())
