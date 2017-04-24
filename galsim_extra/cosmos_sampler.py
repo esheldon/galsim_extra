@@ -108,7 +108,11 @@ def CosmosR50Flux(config, base, name):
     orig_rng = base.get('rng',None)
 
     # This may change the values of base['index_key'] and base['rng']
-    index, index_key = galsim.config.value._get_index(config, base, False)
+    try:
+        index, index_key = galsim.config.GetIndex(config, base)
+    except AttributeError:
+        # The old syntax prior to GalSim v1.5
+        index, index_key = galsim.config.value._get_index(config, base, False)
 
     if base.get('_cosmos_sampler_index',None) != index:
         cosmos_sampler = galsim.config.GetInputObj('cosmos_sampler', config, base, name)
