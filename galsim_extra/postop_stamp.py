@@ -1,6 +1,11 @@
 import galsim
 
-class PostOpStampBuilder(galsim.config.StampBuilder):
+from galsim.config import StampBuilder
+from galsim.config.stamp_ring import RingBuilder
+from galsim.config.gsobject import TransformObject
+from galsim.config.stamp import RegisterStampType
+
+class PostOpStampBuilder(StampBuilder):
 
     def setup(self, config, base, xsize, ysize, ignore, logger):
         ignore = ignore + [
@@ -9,20 +14,25 @@ class PostOpStampBuilder(galsim.config.StampBuilder):
         return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
 
     def buildProfile(self, config, base, psf, gsparams, logger):
-        gal = galsim.config.BuildGSObject(base, 'gal', gsparams=gsparams, logger=logger)[0]
+        # Change the psf appropriately
+        psf, safe = TransformObject(psf, config, base, logger)
+        # Then call the normal buildProfile with the new psf object.
+        return super(self.__class__,self).buildProfile(config, base, psf, gsparams, logger)
 
-        # This line is the change from the normal StampBuilder
-        psf, safe = galsim.config.gsobject.TransformObject(psf, config, base, logger)
+RegisterStampType('PostOp', PostOpStampBuilder())
 
-        if psf:
-            if gal:
-                return galsim.Convolve(gal,psf)
-            else:
-                return psf
-        else:
-            if gal:
-                return gal
-            else:
-                return None
 
-galsim.config.stamp.RegisterStampType('PostOp', PostOpStampBuilder())
+class RingPostOpStampBuilder(RingBuilder):
+    def setup(self, config, base, xsize, ysize, ignore, logger):
+        # The Ring type can also have those transformations, which refer to transformations
+        # of the galaxy, not the psf.  So stick the transformations in a sub-field called
+        # psf_postop.
+        ignore = ignore + ['psf_postop']
+        return super(RingPostOpStampBuilder,self).setup(config,base,xsize,ysize,ignore,logger)
+
+    def buildProfile(self, config, base, psf, gsparams, logger):
+        if 'psf_postop' in config:
+            psf, safe = TransformObject(psf, config['psf_postop'], base, logger)
+        return super(RingPostOpStampBuilder,self).buildProfile(config, base, psf, gsparams, logger)
+
+RegisterStampType('RingPostOp', RingPostOpStampBuilder())
