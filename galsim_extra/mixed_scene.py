@@ -4,15 +4,12 @@ import galsim
 class MixedSceneBuilder(galsim.config.StampBuilder):
 
     def setup(self, config, base, xsize, ysize, ignore, logger):
-        # Build all the kinds of objects once to make sure there is something as the
-        # current_val for everything.  Simplifies the ability to get current values of
-        # things in a truth catalog.
-        objects = config['objects']
-        for key in objects:
-            galsim.config.BuildGSObject(base, key)
+        # Add objects field to the ignore list
+        # Also ignore magnify and shear, which we allow here for convenience to act on whichever
+        # object ends up being chosen.
+        ignore = ignore + [ 'objects', 'magnify', 'shear' ]
 
         # Now go on and do the rest of the normal setup.
-        ignore = ignore + ['objects']
         return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
 
     def buildProfile(self, config, base, psf, gsparams, logger):
@@ -46,6 +43,11 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         obj = galsim.config.BuildGSObject(base, obj_type, gsparams=gsparams, logger=logger)[0]
         # Also save this in case useful for some calculation.
         base['current_obj'] = obj
+
+        # Only shear and magnify are allowed, but this general TransformObject function will
+        # work to implement those.
+        obj, safe = galsim.config.TransformObject(obj, config, base, logger)
+
         if psf:
             if obj:
                 return galsim.Convolve(obj,psf)
