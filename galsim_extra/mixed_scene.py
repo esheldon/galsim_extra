@@ -23,6 +23,7 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
 
         # Figure out which object field to use
         obj_type = None  # So we can check that it was set to something.
+        obj_type_index = 0
         for key, value in objects.items():
             p1 = value / norm
             if p < p1:
@@ -31,13 +32,16 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
                 break
             else:
                 p -= p1
+                obj_type_index += 1
         if obj_type is None:
             # This shouldn't happen, but maybe possible from rounding errors.  Use the last one.
             obj_type = objects.items()[-1][1]
+            obj_type_index -= 1
             logger.error("Error in MixedScene.  Didn't pick an object to use.  Using %s",obj_type)
         # Save this in the dict so it can be used by e.g. the truth catalog or to do something
         # different depending on which kind of object we have.
         base['current_obj_type'] = obj_type
+        base['current_obj_type_index'] = obj_type_index
 
         # Make the appropriate object using the obj_type field
         obj = galsim.config.BuildGSObject(base, obj_type, gsparams=gsparams, logger=logger)[0]
