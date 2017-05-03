@@ -130,7 +130,7 @@ def CosmosR50Flux(config, base, name):
     if orig_rng is not None:
         base['rng'] = orig_rng
 
-    return r50, flux
+    return float(r50), float(flux)
 
 
 def CosmosR50(config, base, value_type):
