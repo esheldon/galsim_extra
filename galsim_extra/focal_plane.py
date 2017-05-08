@@ -123,11 +123,11 @@ class FocalPlaneBuilder(OutputBuilder):
         base['eval_variables']['ffocal_ymax'] = bounds.ymax
         rmax = np.max([proj.x**2 + proj.y**2 for proj in proj_list])**0.5
         base['eval_variables']['ffocal_rmax'] = rmax
-        base['pointing'] = pointing
+        base['eval_variables']['xpointing'] = pointing
         base['eval_variables']['ffocal_r'] = {
             'type' : 'Eval',
             'str' : "math.sqrt(pos.x**2 + pos.y**2)",
-            'ppos' : "$base['pointing'].project(@image.world_pos)"
+            'ppos' : "$pointing.project(@image.world_pos)"
         }
 
         # Evaluate all the meta parameters and write them into the eval_variables dict.
@@ -239,6 +239,13 @@ class FocalPlaneBuilder(OutputBuilder):
         if 'nchips' not in config:
             raise AttributeError("Attribute output.nchips is required for output.type = FocalPlane")
         return galsim.config.ParseValue(config,'nchips',base,int)[0]
+
+    # Both of these steps will already have been done by the Fits builder.  Don't do anything here.
+    def addExtraOutputHDUs(self, config, data, logger):
+        return data
+
+    def writeExtraOutputs(self, config, data, logger):
+        pass
 
 galsim.config.process.top_level_fields += ['meta_params']
 galsim.config.output.RegisterOutputType('FocalPlane', FocalPlaneBuilder())
