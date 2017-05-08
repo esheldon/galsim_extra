@@ -4,15 +4,9 @@ import galsim
 class MixedSceneBuilder(galsim.config.StampBuilder):
 
     def setup(self, config, base, xsize, ysize, ignore, logger):
-        # Add objects field to the ignore list
-        # Also ignore magnify and shear, which we allow here for convenience to act on whichever
-        # object ends up being chosen.
-        ignore = ignore + [ 'objects', 'magnify', 'shear' ]
+        if 'objects' not in config:
+            raise AttributeError('objets field is required for MixedScene stamp type')
 
-        # Now go on and do the rest of the normal setup.
-        return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
-
-    def buildProfile(self, config, base, psf, gsparams, logger):
         objects = config['objects']
         rng = galsim.config.GetRNG(config, base)
         ud = galsim.UniformDeviate(rng)
@@ -42,6 +36,18 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         # different depending on which kind of object we have.
         base['current_obj_type'] = obj_type
         base['current_obj_type_index'] = obj_type_index
+        base['current_obj'] = None
+
+        # Add objects field to the ignore list
+        # Also ignore magnify and shear, which we allow here for convenience to act on whichever
+        # object ends up being chosen.
+        ignore = ignore + ['objects', 'magnify', 'shear']
+
+        # Now go on and do the rest of the normal setup.
+        return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
+
+    def buildProfile(self, config, base, psf, gsparams, logger):
+        obj_type = base['current_obj_type']
 
         # Make the appropriate object using the obj_type field
         obj = galsim.config.BuildGSObject(base, obj_type, gsparams=gsparams, logger=logger)[0]
