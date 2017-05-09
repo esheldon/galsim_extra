@@ -202,11 +202,12 @@ stamp:
     # calculations needed to build the object.
     skip:
         type: OffChip
-        # 10*hlr + 10*psf_fwhm is probably conservative as a border...
+        # This is probably conservative as a border:
         #min_dist: '$10 * gal_hlr + 10 * @psf.fwhm'
+
         # But the CosmosR50 calculation is slow.  So instead, just use a constant.
-        # Even though this is less conservative, it's actually faster, since it avoids the slow
-        # hlr calculation for most of the galaxies.
+        # Even though this is even more conservative, it's actually faster, since it avoids the
+        # slow gal_hlr calculation for most of the galaxies.
         min_dist: 100
 
 image:
