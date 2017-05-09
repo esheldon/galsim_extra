@@ -98,10 +98,10 @@ class FocalPlaneBuilder(OutputBuilder):
         # Also calculate the min/max ra and dec
         ra_list = [p.ra.wrap(pointing.ra.rad()) for p in corners]
         dec_list = [p.dec for p in corners]
-        pointing_minra = np.min(ra_list)
-        pointing_maxra = np.max(ra_list)
-        pointing_mindec = np.min(dec_list)
-        pointing_maxdec = np.max(dec_list)
+        fov_minra = np.min(ra_list)
+        fov_maxra = np.max(ra_list)
+        fov_mindec = np.min(dec_list)
+        fov_maxdec = np.max(dec_list)
 
         # bounds is the bounds in the tangent plane
         proj_list = [ pointing.project(p, projection='gnomonic') for p in corners]
@@ -111,10 +111,10 @@ class FocalPlaneBuilder(OutputBuilder):
         # Write these values into the dict in eval_variables, so they can be used in Eval's.
         base['eval_variables']['apointing_ra'] = pointing.ra
         base['eval_variables']['apointing_dec'] = pointing.dec
-        base['eval_variables']['apointing_minra'] = pointing_minra
-        base['eval_variables']['apointing_maxra'] = pointing_maxra
-        base['eval_variables']['apointing_mindec'] = pointing_mindec
-        base['eval_variables']['apointing_maxdec'] = pointing_maxdec
+        base['eval_variables']['afov_minra'] = fov_minra
+        base['eval_variables']['afov_maxra'] = fov_maxra
+        base['eval_variables']['afov_mindec'] = fov_mindec
+        base['eval_variables']['afov_maxdec'] = fov_maxdec
         base['eval_variables']['ifirst_image_num'] = image_num
         base['eval_variables']['ichip_num'] = '$image_num - first_image_num'
         base['eval_variables']['ffocal_xmin'] = bounds.xmin

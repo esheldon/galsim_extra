@@ -235,14 +235,14 @@ image:
         type: RADec
         ra: 
             type: Radians
-            theta: { type: Random, min: "$pointing_minra.rad()", max: "$pointing_maxra.rad()" }
+            theta: { type: Random, min: "$fov_minra.rad()", max: "$fov_maxra.rad()" }
         dec:
             type: Radians
             theta: 
                 type: RandomDistribution
                 function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
-                x_min: "$pointing_mindec.rad()"
-                x_max: "$pointing_maxdec.rad()"
+                x_min: "$fov_mindec.rad()"
+                x_max: "$fov_maxdec.rad()"
 
     wcs: 
         # Go through the exp_list catalog and sequentially use each exposure once.
