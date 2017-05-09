@@ -152,7 +152,7 @@ star:
 
 # The PSF is coherent across the full field of view.
 # The size has a polynomial component where it gets larger near the edges to
-# simulate a comatic kind of optical feature.  There is also an atmospheric
+# simulate a defocus kind of optical feature.  There is also an atmospheric
 # part using a Gaussian process power spectrum model for the shape and size.
 psf:
     type: Moffat
