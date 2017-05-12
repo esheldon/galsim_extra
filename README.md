@@ -57,10 +57,6 @@ To use these in a GalSim configuration file you will need to do the following:
   wcs for an arbitrary ccd number and image position from a given DES WCS solution.
   cf. examples/des/meds.yaml in the GalSIm repo.
 
-* `des_wcs` is an input type to enable the `DES_Local` wcs type.  It returns the local Jacobian
-  wcs for an arbitrary ccd number and image position from a given DES WCS solution.
-  cf. examples/des/meds.yaml in the GalSIm repo.
-
 * More.  This is not an exhaustive listing.  There are other modules that were made for targeted
   investigations, which are not likely to be of wider interest.  Although, of course feel free to
   peruse the files and use anything that seems like it might be helpful.
