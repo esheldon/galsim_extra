@@ -57,6 +57,11 @@ To use these in a GalSim configuration file you will need to do the following:
   wcs for an arbitrary ccd number and image position from a given DES WCS solution.
   cf. examples/des/meds.yaml in the GalSIm repo.
 
+* 'WrongWCS' is an image type that is identical to the normal Scattered image type, except that it
+  changes the wcs to something different (`output_wcs`) before writing the image to disk.  This
+  is useful for characterizing the impact of wcs errors on subsequent measurements.
+  cf. examples/wrongwcs.yaml.
+
 * More.  This is not an exhaustive listing.  There are other modules that were made for targeted
   investigations, which are not likely to be of wider interest.  Although, of course feel free to
   peruse the files and use anything that seems like it might be helpful.

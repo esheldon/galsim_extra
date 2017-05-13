@@ -1,0 +1,176 @@
+
+# Test how PSFEx and Piff do when the real WCS (i.e. Gary's solution) is used for the rendering,
+# but the FITS header is given the DESDM WCS solution.
+modules:
+    - galsim_extra
+
+# Some variable definitions that let us define things here and then use them again later
+# via either the YAML tag (e.g. *run) or in an eval string (e.g. '$run').
+eval_variables:
+
+    srun: &run "001"
+    sDATADIR: /astro/u/esheldon/des-lensing/meds-making/
+
+    # We'll use this a few times, so put it here for convenience.
+    sccdname: { type: CCDName, index: '$chip_num', index_key: 'image_num' }
+
+    # CCD "names" here are just integer numbers, so can convert.
+    iccdnum: '$int(ccdname)'
+
+# We're only drawing stars in this sim.  So just a psf field.  No gal.
+
+# The PSF is coherent across the full field of view.
+# The size has a polynomial component where it gets larger near the edges to
+# simulate a defocus kind of optical feature.  There is also an atmospheric
+# part using a Gaussian process power spectrum model for the shape and size.
+psf:
+    type: Moffat
+    beta: 2.5
+    #fwhm: '$fwhm_central + fwhm_a * (focal_r/focal_rmax)**2'
+    fwhm: 0.9
+    #ellip:
+        #type: PowerSpectrumShear
+    #magnify:
+        #type: PowerSpectrumMagnification
+    flux:
+        type: RandomDistribution
+        # looks like the slope for the bright end stars in DES r band
+        function: x**-1.5
+        x_min: 1000.0
+        x_max: 1.0e+06
+
+
+    skip:
+        type: OffChip
+        min_dist: '$10 * @psf.fwhm'
+
+image:
+    type: WrongWCS
+
+    noise:
+        type: Gaussian
+        sigma: 0.1
+
+    # For now this is very low, so objects will be quite high S/N.
+    sky_level: { type: Random, min: 500, max: 1500, index_key: exp_num }
+
+    random_seed: 8675309
+
+    # The number of objects across the full focal plane.
+    nobjects:
+        type: RandomPoisson
+        mean: 12000  # Roughly 200 stars per chip
+        index_key: exp_num
+
+    xsize: 2048
+    ysize: 4096
+
+    world_pos:
+        type: RADec
+        ra:
+            type: Radians
+            theta: { type: Random, min: "$fov_minra.rad()", max: "$fov_maxra.rad()" }
+        dec:
+            type: Radians
+            theta:
+                type: RandomDistribution
+                function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
+                x_min: "$fov_mindec.rad()"
+                x_max: "$fov_maxdec.rad()"
+
+    wcs:
+        # This is the real wcs used for rendering.  Also, what we'll pass into Piff.
+        type: Pixmappy
+        dir: input
+        file_name: 'zone029.astro'
+        exp: { type: Catalog, col: 0, index_key: exp_num }
+        ccdnum: "$ccdnum"
+
+    output_wcs:
+        # This is what DESDM thought the WCS was.  This is what PSFEx will use.
+        type: Fits
+        file_name: { type: CCDFile, index: '$chip_num' }
+
+
+input:
+    power_spectrum:
+        index_key: exp_num
+        # Heymans et al, 2012 found L0 ~= 3 arcmin, given as 180 arcsec here.
+        e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
+        b_power_function: '@input.power_spectrum.e_power_function'
+        units: arcsec
+        grid_spacing: 30
+        variance: '$rms_e**2'  # rms_e is given in meta_params
+
+    catalog:
+        # This catalog lists the DES exposures to process.
+        file_name: y3_list
+
+    all_ccds:
+        index_key: exp_num
+        dir:
+            type: FormattedStr
+            #format: '%s/OPS/finalcut/%s-%s/%s/D%08d/%s/red/immask/'
+            format: '/Users/Mike/Astro/des/Y3/D%08d'
+            items:
+                #- '$DATADIR'
+                #- { type: Catalog, col: 2 }
+                #- { type: Catalog, col: 3 }
+                #- { type: Catalog, col: 4 }
+                - { type: Catalog, col: 0 }
+                #- { type: Catalog, col: 5 }
+        files:
+            type: FormattedStr
+            format: 'D%08d_%s_c*_r%s%s_immasked.fits.fz'
+            items:
+                - { type: Catalog, col: 0 }
+                - { type: Catalog, col: 1 }
+                - { type: Catalog, col: 3 }
+                - { type: Catalog, col: 5 }
+
+
+meta_params:
+    # This field has information *about* the PSF (or the exposure in general), which will be used
+    # by the psf field to generate the specific PSFs at the location of each galaxy.
+    # This is a custom field for use with the FocalPlane output type.
+    # Variable names here are arbitrary, and will be evaluated once at the start of each
+    # focal plane.  The values can be used by the psf field in eval statements.
+    #fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
+    #fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
+    rms_e: 0.03
+
+output:
+    type: FocalPlane
+
+    nexp: '$(@input.catalog).getNObjects()'
+
+    nchips: { type: NCCD }
+
+    dir: output
+    file_name:
+        type: FormattedStr
+        format: "wrong_wcs_%s_%s_%s.fits.fz"
+        items:
+        - *run
+        - { type: Catalog, col: 0 }
+        - '$ccdname'
+
+    truth:
+        file_name :
+            type: FormattedStr
+            format: "truth_D%08d_%s_c%s.fits"
+            items:
+            - { type: Catalog, col: 0 }
+            - { type: Catalog, col: 1 }
+            - '$ccdname'
+
+        columns:
+            num: obj_num
+            x: "$image_pos.x"
+            y: "$image_pos.y"
+
+            fwhm: psf.fwhm
+            flux: psf.flux
+            #e1: '$(@psf.ellip).e1'
+            #e2: '$(@psf.ellip).e2'
+
