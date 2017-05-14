@@ -1,6 +1,19 @@
 
 # Test how PSFEx and Piff do when the real WCS (i.e. Gary's solution) is used for the rendering,
 # but the FITS header is given the DESDM WCS solution.
+#
+# This example uses the following galsim_extra modules:
+#     WrongWCS image type
+#     FocalPlane output type
+#     Pixmappy wcs type
+#     LogNormal value type
+#     OffChip value type
+#     all_ccds input type (along with connected NCCD, CCDName and CCDFile value types)
+#
+# It also requires pixmappy to be installed.
+#
+#   https://github.com/gbernstein/pixmappy
+
 modules:
     - galsim_extra
 
@@ -26,12 +39,11 @@ eval_variables:
 psf:
     type: Moffat
     beta: 2.5
-    #fwhm: '$fwhm_central + fwhm_a * (focal_r/focal_rmax)**2'
-    fwhm: 0.9
-    #ellip:
-        #type: PowerSpectrumShear
-    #magnify:
-        #type: PowerSpectrumMagnification
+    fwhm: '$fwhm_central + fwhm_a * (focal_r/focal_rmax)**2'
+    ellip:
+        type: PowerSpectrumShear
+    magnify:
+        type: PowerSpectrumMagnification
     flux:
         type: RandomDistribution
         # looks like the slope for the bright end stars in DES r band
@@ -39,10 +51,14 @@ psf:
         x_min: 1000.0
         x_max: 1.0e+06
 
-
     skip:
         type: OffChip
         min_dist: '$10 * @psf.fwhm'
+
+    gsparams:
+        # Without this, some of the really bright stars appear boxy.  Mostly because the noise
+        # level is pretty low.
+        folding_threshold: 1.e-3
 
 image:
     type: WrongWCS
@@ -135,8 +151,8 @@ meta_params:
     # This is a custom field for use with the FocalPlane output type.
     # Variable names here are arbitrary, and will be evaluated once at the start of each
     # focal plane.  The values can be used by the psf field in eval statements.
-    #fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
-    #fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
+    fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
+    fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
     rms_e: 0.03
 
 output:
@@ -171,6 +187,6 @@ output:
 
             fwhm: psf.fwhm
             flux: psf.flux
-            #e1: '$(@psf.ellip).e1'
-            #e2: '$(@psf.ellip).e2'
+            e1: '$(@psf.ellip).e1'
+            e2: '$(@psf.ellip).e2'
 
