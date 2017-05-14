@@ -2,7 +2,11 @@ from __future__ import absolute_import
 
 import galsim
 import os
-import pixmappy
+try:
+    import pixmappy
+except:
+    pass  # Don't fail immediately if pixmappy isn't available.  Only fail it they try to use
+          # the Pixmappy WCS type and `import pixmappy` doesn't work.
 
 class PixmappyBuilder(galsim.config.WCSBuilder):
 
