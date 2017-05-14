@@ -43,7 +43,7 @@ class AllCCDs(object):
             raise ValueError("Only a single * character is allowed in files")
 
         full_path = os.path.join(dir, files)
-        self.file_names = glob.glob(full_path)
+        self.file_names = sorted(glob.glob(full_path))
 
         if len(self.file_names) == 0:
             msg = "No files matching %s found"%files
