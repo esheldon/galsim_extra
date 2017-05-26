@@ -214,8 +214,9 @@ image:
     type: Scattered
 
     noise:
-        type: Gaussian
-        sigma: 22.0
+        type: FitsNoise
+        filename: "DECam_00158414_01.fits.fz"
+        hdu: 3
 
     # Note: The real distribution of sky levels probably isn't flat.  It's probably bimodal,
     # depending on whether the moon is up.  But this is probably ok for now.
