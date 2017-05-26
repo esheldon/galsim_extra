@@ -214,18 +214,21 @@ image:
     type: Scattered
 
     noise:
-        type: Poisson
+        type: Gaussian
+        sigma: 22.0
 
     # Note: The real distribution of sky levels probably isn't flat.  It's probably bimodal,
     # depending on whether the moon is up.  But this is probably ok for now.
-    sky_level: { type: Random, min: 5000, max: 15000, index_key: exp_num }
+    #sky_level: { type: Random, min: 5000, max: 15000, index_key: exp_num }
+    sky_level_pixel: 2100
 
     random_seed: 8675309
 
     # The number of objects across the full focal plane.
     nobjects:
         type: RandomPoisson
-        mean: 5.0e5  # Expectation value is half a million objects total ~ 8k per chip
+        #mean: 5.0e5  # Expectation value is half a million objects total ~ 8k per chip
+        mean: "$(8000*@output.nchips)"
         index_key: exp_num
 
     xsize: 2048
@@ -300,7 +303,7 @@ output:
     # also access it in eval statements as just exp_num.
     nexp: '$(@input.catalog).getNObjects()'
 
-    nchips: 62  # The number of chips per exposure
+    nchips: 1  # The number of chips per exposure
 
     dir: output
     file_name:
