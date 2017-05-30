@@ -17,11 +17,23 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
 
 
     def getNoiseVariance(self, config, base):
-        hdus = fits.open(config['filename'])
-        hdu = hdus[config['hdu']]
-        hdu.verify('fix')
+        req = {'hdu': int, 'dir': str, 'file_name': str}
+        opt = {'dir': str}
+        params, safe = galsim.config.GetAllParams(config, base, req=req, opt=opt)        
+
+
+        filename = params.get('dir', '.') + '/' + params['file_name']
+
+        hdus = fits.open(filename)
+        hdu = hdus[params['hdu']]
+        hdu.verify('silentfix')
+
         varmap = 1.0/hdu.data
-        wcs = base['wcs']
+
+        #set any negative vars to 0
+        varmap[varmap < 0] = 0
+
+        wcs = base['wcs'] #does this need to be interpretted by galsim somehow?
         return galsim.image.Image(varmap, wcs=wcs)
 
 galsim.config.RegisterNoiseType('FitsNoise', FitsNoiseBuilder())
