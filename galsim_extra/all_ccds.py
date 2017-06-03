@@ -11,6 +11,7 @@
 # * CCDName is a string value type that returns the id for the current chip num.
 # * CCDFile is the file name in that directory
 
+from __future__ import absolute_import
 import glob
 import os
 import galsim
