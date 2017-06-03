@@ -99,7 +99,7 @@ class FocalPlaneBuilder(OutputBuilder):
         logger.info("Calculated center of focal plane to be %s",pointing)
 
         # Also calculate the min/max ra and dec
-        ra_list = [p.ra.wrap(pointing.ra.rad()) for p in corners]
+        ra_list = [p.ra.wrap(pointing.ra) for p in corners]
         dec_list = [p.dec for p in corners]
         fov_minra = np.min(ra_list)
         fov_maxra = np.max(ra_list)
