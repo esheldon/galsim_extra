@@ -13,11 +13,10 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
         """
         var = self.getNoiseVariance(config, base)
         noise = galsim.noise.VariableGaussianNoise(rng, var)
-        noise.applyTo(im)
-
+        im.addNoise(noise)
 
     def getNoiseVariance(self, config, base):
-        req = {'hdu': int, 'dir': str, 'file_name': str}
+        req = {'hdu': int, 'file_name': str}
         opt = {'dir': str}
         params, safe = galsim.config.GetAllParams(config, base, req=req, opt=opt)        
 
@@ -30,10 +29,8 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
 
         varmap = 1.0/hdu.data
 
-        #set any negative vars to 0
-        varmap[varmap < 0] = 0
+        #wcs = base['wcs'] #does this need to be interpretted by galsim somehow?
+        return galsim.image.Image(varmap, wcs=None)
 
-        wcs = base['wcs'] #does this need to be interpretted by galsim somehow?
-        return galsim.image.Image(varmap, wcs=wcs)
 
 galsim.config.RegisterNoiseType('FitsNoise', FitsNoiseBuilder())
