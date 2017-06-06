@@ -306,7 +306,8 @@ output:
     # also access it in eval statements as just exp_num.
     nexp: '$(@input.catalog).getNObjects()'
 
-    nchips: 1  # The number of chips per exposure
+    nchips: 62  # The number of chips per exposure
+    exclude: [31, 61]
 
     dir: output
     file_name:
