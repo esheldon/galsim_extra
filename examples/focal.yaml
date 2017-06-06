@@ -213,12 +213,6 @@ stamp:
 image:
     type: Scattered
 
-
-    # Note: The real distribution of sky levels probably isn't flat.  It's probably bimodal,
-    # depending on whether the moon is up.  But this is probably ok for now.
-    #sky_level: { type: Random, min: 5000, max: 15000, index_key: exp_num }
-    sky_level_pixel: 2085
-
     random_seed: 8675309
 
     # The number of objects across the full focal plane.
@@ -249,6 +243,13 @@ image:
         hdu: 3
         dir: '@image.wcs.dir'
         file_name: '@image.wcs.file_name'
+        bkg_hdu: 1
+        bkg_file_name:
+            type: FormattedStr
+            format: "%s_%02d_bkg.fits.fz"
+            items:
+            - { type: Catalog, col: 1 }
+            - "$chip_num + 1"
 
     wcs:
         # Go through the exp_list catalog and sequentially use each exposure once.
@@ -306,7 +307,7 @@ output:
     # also access it in eval statements as just exp_num.
     nexp: '$(@input.catalog).getNObjects()'
 
-    nchips: 62  # The number of chips per exposure
+    nchips: 1  # The number of chips per exposure
     exclude: [31, 61]
 
     dir: output

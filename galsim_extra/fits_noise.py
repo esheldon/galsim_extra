@@ -2,6 +2,9 @@ import galsim
 from astropy.io import fits
 
 class FitsNoiseBuilder(galsim.config.NoiseBuilder):
+    req = {'hdu': int, 'file_name': str}
+    opt = {'dir': str, 'bkg_hdu': int, 'bkg_dir': str, 'bkg_file_name': str}
+    
     def addNoise(self, config, base, im, rng, current_var, draw_method, logger):
         """
         @param config           The configuration dict for the noise field.
@@ -15,11 +18,22 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
         noise = galsim.noise.VariableGaussianNoise(rng, var)
         im.addNoise(noise)
 
-    def getNoiseVariance(self, config, base):
-        req = {'hdu': int, 'file_name': str}
-        opt = {'dir': str}
-        params, safe = galsim.config.GetAllParams(config, base, req=req, opt=opt)        
+        #add background if applicable
+        params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)
+        if 'bkg_hdu' in params:
+            filename = params.get('bkg_file_name', params['file_name'])
+            directory = params.get('bkg_dir', params.get('dir', '.'))
+            path = directory + '/' + filename
 
+            hdus = fits.open(path)
+            hdu = hdus[params['bkg_hdu']]
+            hdu.verify('silentfix')
+
+            im += galsim.image.Image(hdu.data)
+
+
+    def getNoiseVariance(self, config, base):
+        params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)        
 
         filename = params.get('dir', '.') + '/' + params['file_name']
 
