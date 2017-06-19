@@ -22,7 +22,7 @@ simhdus = fits.open("output/sim_DECam_00241238_01.fits")
 simhdus.verify('silentfix')
 print(simhdus.info())
 
-#zero out nans and infs in sim data
+#zero out infs in sim data
 print(np.count_nonzero(simhdus[0].data[np.isinf(simhdus[0].data)]))
 simhdus[0].data[np.isinf(simhdus[0].data)] = 0
 print(np.count_nonzero(simhdus[0].data[np.isinf(simhdus[0].data)]))
