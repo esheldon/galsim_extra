@@ -98,7 +98,7 @@ class FocalPlaneBuilder(OutputBuilder):
         pointing = galsim.CelestialCoord.from_xyz(pointing_x, pointing_y, pointing_z)
 
         # Also calculate the min/max ra and dec
-        ra_list = [p.ra.wrap(pointing.ra.rad()) for p in corners]
+        ra_list = [p.ra.wrap(pointing.ra) for p in corners]
         dec_list = [p.dec for p in corners]
         fov_minra = np.min(ra_list)
         fov_maxra = np.max(ra_list)
