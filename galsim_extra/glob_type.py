@@ -6,8 +6,8 @@
 # * Glob is a string value type that returns (sequentially) the file names matching
 #        a given glob pattern.
 #
-# Note: This is similar using the all_ccds input type (cf. all_ccds.py), but it does
-#       not require an input object.  Normally all_ccds will be more efficient, since
+# Note: This is similar using the all_files input type (cf. all_files.py), but it does
+#       not require an input object.  Normally all_files will be more efficient, since
 #       if only requires file I/O once, but there are some situations where these
 #       types may be more convenient.
 #
