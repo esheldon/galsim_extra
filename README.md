@@ -62,6 +62,13 @@ To use these in a GalSim configuration file you will need to do the following:
   is useful for characterizing the impact of wcs errors on subsequent measurements.
   cf. examples/wrongwcs.yaml.
 
+* `all_files` is an input type that gets the names of all the files in a directory matching a
+  particular glob string.  This is useful when the number of CCDs say for your various exposures
+  is not constant.  e.g. Some files may be excluded for not being part of a coadd set or might
+  not have been written due to some kind of error upstream.  This type lets you dynamically use
+  only the files that are present in the directory.  It is connected to value types NFiles,
+  ThisFileName and ThisFileTag.
+
 * More.  This is not an exhaustive listing.  There are other modules that were made for targeted
   investigations, which are not likely to be of wider interest.  Although, of course feel free to
   peruse the files and use anything that seems like it might be helpful.

@@ -8,7 +8,7 @@
 #     Pixmappy wcs type
 #     LogNormal value type
 #     OffChip value type
-#     all_ccds input type (along with connected NCCD, CCDName and CCDFile value types)
+#     all_files input type (along with connected NFiles, ThisFileName and ThisFileTag value types)
 #
 # It also requires pixmappy to be installed.
 #
@@ -28,7 +28,7 @@ eval_variables:
     sDATADIR: /astro/u/esheldon/des-lensing/meds-making
 
     # We'll use this a few times, so put it here for convenience.
-    sccdname: { type: CCDName, index: '$chip_num', index_key: 'image_num' }
+    sccdname: { type: ThisFileTag, index: '$chip_num', index_key: 'image_num' }
 
     # CCD "names" here are just integer numbers, so can convert.
     iccdnum: '$int(ccdname)'
@@ -106,7 +106,7 @@ image:
     output_wcs:
         # This is what DESDM thought the WCS was.  This is what PSFEx will use.
         type: Fits
-        file_name: { type: CCDFile, index: '$chip_num' }
+        file_name: { type: ThisFileName, index: '$chip_num' }
 
 
 input:
@@ -125,7 +125,15 @@ input:
         # This catalog lists the DES exposures to process.
         file_name: y3_list
 
-    all_ccds:
+    all_files:
+        # all_files uses glob to list all the files in a given directory.
+        # We have different subsets of the CCDs for different exposures, so this lets us get
+        # the right set of chip numbers for each exposure.
+        #
+        # NFiles is an integer value type giving the number of Files in the directory.
+        # ThisFileName gives the current file name to use (indexed by chipnum here).
+        # ThisFileTag gives the part of the file name that replaces the * in the `files` field
+        #     below.  In this case, it is the 2 character ccd number: 01 .. 62.
         index_key: exp_num
         dir:
             type: FormattedStr
@@ -168,7 +176,10 @@ output:
     type: FocalPlane
 
     nexp: '$(@input.catalog).getNObjects()'
-    nchips: { type: NCCD }
+
+    # NFiles is connected to the all_files input.  It gives the number of image files in the
+    # directory for this exposure.  There is one per chip.
+    nchips: { type: NFiles }
 
     # Use all cores on a node.  This config is designed to be run using a full node at once, and
     # let GalSim split the work over the available cores.  If you'd rather run on just one core,
