@@ -91,7 +91,7 @@ bright_gal:
     items:
         -
             type: DeVaucouleurs
-            half_light_radius: 
+            half_light_radius:
                 type: CosmosR50
             flux: { type: Random, min: 0, max: 1 }
             ellip:
@@ -102,7 +102,7 @@ bright_gal:
         -
             type: Exponential
             half_light_radius: '@bright_gal.items.0.half_light_radius'
-            flux: 
+            flux:
                 type: Eval
                 str: 'smooth_frac * (1. - @bright_gal.items.0.flux)'
                 fsmooth_frac: { type: Random, min: 0, max: 1 }
@@ -233,18 +233,18 @@ image:
 
     world_pos:
         type: RADec
-        ra: 
+        ra:
             type: Radians
             theta: { type: Random, min: "$fov_minra.rad()", max: "$fov_maxra.rad()" }
         dec:
             type: Radians
-            theta: 
+            theta:
                 type: RandomDistribution
                 function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
                 x_min: "$fov_mindec.rad()"
                 x_max: "$fov_maxdec.rad()"
 
-    wcs: 
+    wcs:
         # Go through the exp_list catalog and sequentially use each exposure once.
         type: Fits
         dir:
@@ -266,7 +266,7 @@ input:
         min_flux: 2.5
         max_flux: 100
 
-    power_spectrum: 
+    power_spectrum:
         index_key: exp_num
         # Heymans et al, 2012 found L0 ~= 3 arcmin, given as 180 arcsec here.
         e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
@@ -282,7 +282,8 @@ input:
         # the _chipnum.fits.fz suffix).
         # The version of this in the current directory works on my laptop (and just has one
         # exposure listed).  It would need to be changed to run at scale e.g. at BNL.
-        file_name: exp_list 
+        file_name: exp_list
+        #file_name: exp_list_bnl   # This one has the right directory for BNL computers
 
 meta_params:
     # This field has information *about* the PSF (or the exposure in general), which will be used
