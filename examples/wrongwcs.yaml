@@ -21,8 +21,8 @@ modules:
 # via either the YAML tag (e.g. *run) or in an eval string (e.g. '$run').
 eval_variables:
 
-    # This corresponds to my 7th version of this script.  So run 007.
-    srun: &run "007"
+    # This corresponds to my 8th version of this script.  So run 008.
+    srun: &run "008"
 
     # This is the location at BNL of the input files I'm using.
     sDATADIR: /astro/u/esheldon/des-lensing/meds-making
@@ -59,11 +59,12 @@ psf:
         min_dist: '$10 * @psf.fwhm'
 
     gsparams:
-        # Without this, some of the really bright stars appear boxy.  Mostly because the noise
-        # level is pretty low.
+        # Without this, some of the really bright stars appear boxy when I turn down the
+        # noise level.  Probably not necessary, but it doesn't slow things down too much.
         folding_threshold: 1.e-3
 
 image:
+    # The WrongWCS image type is just like Scattered, except for the output_wcs field (see below).
     type: WrongWCS
 
     noise:
@@ -104,7 +105,10 @@ image:
         ccdnum: "$ccdnum"
 
     output_wcs:
-        # This is what DESDM thought the WCS was.  This is what PSFEx will use.
+        # This wcs will be slotted into the image before being written out, so the fits file will
+        # have this one.  This WCS is what DESDM thought the WCS was, and it is what PSFEx will use.
+        # Piff has the option to either use this WCS or be told a different one to use, so we
+        # can test telling Piff to use the Pixmappy solution.
         type: Fits
         file_name: { type: ThisFileName, index: '$chip_num' }
 
@@ -116,7 +120,7 @@ input:
         e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
         b_power_function: '@input.power_spectrum.e_power_function'
         units: arcsec
-        grid_spacing: 10
+        grid_spacing: 10  # arcsec.  Should be smaller than scales of interest in rho1.
         ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
         center: 0,0
         variance: '$rms_e**2'  # rms_e is given in meta_params
@@ -168,13 +172,14 @@ meta_params:
     # so it seems like this might be in the right ball park.
     rms_e: 0.003
 
-    # For now this is very low, so objects will be quite high S/N.
+    # This seems to give a reasonable noise level.  The faintest stars have S/N ~= 10.
     sky_level: { type: Random, min: 50, max: 150 }
 
 
 output:
     type: FocalPlane
 
+    # The input catalog has a line for each exposure.  So its nobjects is nexp.
     nexp: '$(@input.catalog).getNObjects()'
 
     # NFiles is connected to the all_files input.  It gives the number of image files in the
