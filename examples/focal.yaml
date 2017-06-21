@@ -292,7 +292,7 @@ meta_params:
     # focal plane.  The values can be used by the psf field in eval statements.
     fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
     fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
-    rms_e: 0.03
+    rms_e: 0.01
 
 output:
     type: FocalPlane

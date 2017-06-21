@@ -21,8 +21,11 @@ modules:
 # via either the YAML tag (e.g. *run) or in an eval string (e.g. '$run').
 eval_variables:
 
-    srun: &run "001"
-    sDATADIR: /astro/u/esheldon/des-lensing/meds-making/
+    # This corresponds to my 7th version of this script.  So run 007.
+    srun: &run "007"
+
+    # This is the location at BNL of the input files I'm using.
+    sDATADIR: /astro/u/esheldon/des-lensing/meds-making
 
     # We'll use this a few times, so put it here for convenience.
     sccdname: { type: CCDName, index: '$chip_num', index_key: 'image_num' }
@@ -64,11 +67,9 @@ image:
     type: WrongWCS
 
     noise:
-        type: Gaussian
-        sigma: 0.1
+        type: Poisson
 
-    # For now this is very low, so objects will be quite high S/N.
-    sky_level: { type: Random, min: 500, max: 1500, index_key: exp_num }
+    sky_level_pixel: '$sky_level'  # Set in meta_params
 
     random_seed: 8675309
 
@@ -115,7 +116,9 @@ input:
         e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
         b_power_function: '@input.power_spectrum.e_power_function'
         units: arcsec
-        grid_spacing: 30
+        grid_spacing: 10
+        ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
+        center: 0,0
         variance: '$rms_e**2'  # rms_e is given in meta_params
 
     catalog:
@@ -126,15 +129,14 @@ input:
         index_key: exp_num
         dir:
             type: FormattedStr
-            #format: '%s/OPS/finalcut/%s-%s/%s/D%08d/%s/red/immask/'
-            format: '/Users/Mike/Astro/des/Y3/D%08d'
+            format: '%s/OPS/finalcut/Y2A1/%s-%s/%s/D%08d/%s/red/immask/'
             items:
-                #- '$DATADIR'
-                #- { type: Catalog, col: 2 }
-                #- { type: Catalog, col: 3 }
-                #- { type: Catalog, col: 4 }
+                - '$DATADIR'
+                - { type: Catalog, col: 2 }
+                - { type: Catalog, col: 3 }
+                - { type: Catalog, col: 4 }
                 - { type: Catalog, col: 0 }
-                #- { type: Catalog, col: 5 }
+                - { type: Catalog, col: 5 }
         files:
             type: FormattedStr
             format: 'D%08d_%s_c*_r%s%s_immasked.fits.fz'
@@ -153,14 +155,25 @@ meta_params:
     # focal plane.  The values can be used by the psf field in eval statements.
     fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
     fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
-    rms_e: 0.03
+
+    # This produces rho1 values from PSFEx that are about the right level compared to data,
+    # so it seems like this might be in the right ball park.
+    rms_e: 0.003
+
+    # For now this is very low, so objects will be quite high S/N.
+    sky_level: { type: Random, min: 50, max: 150 }
+
 
 output:
     type: FocalPlane
 
     nexp: '$(@input.catalog).getNObjects()'
-
     nchips: { type: NCCD }
+
+    # Use all cores on a node.  This config is designed to be run using a full node at once, and
+    # let GalSim split the work over the available cores.  If you'd rather run on just one core,
+    # remove (or comment out) this line.
+    nproc: -1
 
     dir: output
     file_name:
@@ -171,22 +184,30 @@ output:
         - { type: Catalog, col: 0 }
         - '$ccdname'
 
+    weight:
+        hdu: 1
+
     truth:
         file_name :
             type: FormattedStr
-            format: "truth_D%08d_%s_c%s.fits"
+            format: "truth_%s_%s_%s.fits"
             items:
+            - *run
             - { type: Catalog, col: 0 }
-            - { type: Catalog, col: 1 }
             - '$ccdname'
 
         columns:
             num: obj_num
-            x: "$image_pos.x"
-            y: "$image_pos.y"
+            ccd_num: '$chip_num'
+            ccd_name: '$ccdname'
+            x: '$image_pos.x'
+            y: '$image_pos.y'
+            sky: '$sky_level'
+            ra: '$@image.world_pos.ra / galsim.degrees'
+            dec: '$@image.world_pos.dec / galsim.degrees'
 
-            fwhm: psf.fwhm
+            fwhm: '$@psf.fwhm * math.sqrt(@psf.magnify)'
             flux: psf.flux
-            e1: '$(@psf.ellip).e1'
-            e2: '$(@psf.ellip).e2'
+            e1: '$(@psf.ellip).g1'
+            e2: '$(@psf.ellip).g2'
 
