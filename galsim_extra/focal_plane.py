@@ -114,7 +114,7 @@ class FocalPlaneBuilder(OutputBuilder):
         proj_list = [ pointing.project(p, projection='gnomonic') for p in corners]
         bounds = galsim.BoundsD()
         for proj in proj_list: bounds += proj
-        logger.info("Bounds in tanget plane = %s (arcsec)",bounds)
+        logger.info("Bounds in tangent plane = %s (arcsec)",bounds)
 
         # Write these values into the dict in eval_variables, so they can be used in Eval's.
         base['eval_variables']['apointing_ra'] = pointing.ra
@@ -136,7 +136,10 @@ class FocalPlaneBuilder(OutputBuilder):
         base['eval_variables']['ffocal_r'] = {
             'type' : 'Eval',
             'str' : "math.sqrt(pos.x**2 + pos.y**2)",
-            'ppos' : "$pointing.project(@image.world_pos)"
+            'ppos' : { 'type' : 'Eval',
+                       'str' : "pointing.project(world_pos)",
+                       'cworld_pos' : "@image.world_pos"
+                     }
         }
 
         # Evaluate all the meta parameters and write them into the eval_variables dict.
@@ -165,7 +168,8 @@ class FocalPlaneBuilder(OutputBuilder):
                     { 'type' : 'Sequence', 'index_key' : 'obj_num', 'first' : first } )
             else:
                 base['image']['random_seed'].append(rs)
-            base['image']['noise']['rng_num'] = 1
+            if 'noise' in base['image']:
+                base['image']['noise']['rng_num'] = 1
 
         # We let GalSim do its normal BuildFiles thing now, which would run in parallel
         # if appropriate.  And it writes each image to disk as it gets made rather than holding
