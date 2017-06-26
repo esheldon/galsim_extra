@@ -35,7 +35,7 @@ class FocalPlaneBuilder(OutputBuilder):
             try:
                 return galsim.config.ParseValue(config, 'nexp', base, int)[0]
             except:
-                galsim.config.ProcessInput(base)
+                galsim.config.ProcessInput(base, safe_only=True)
                 return galsim.config.ParseValue(config, 'nexp', base, int)[0]
         else:
             return 1
