@@ -156,7 +156,7 @@ star:
 # simulate a defocus kind of optical feature.  There is also an atmospheric
 # part using a Gaussian process power spectrum model for the shape and size.
 psf:
-    type: PSFEx
+    type: DES_PSFEx
 
 stamp:
     # A custom stamp type in galsim_extra that lets you have multiple kinds of
@@ -197,15 +197,10 @@ stamp:
     # calculations needed to build the object.
     skip:
         type: OffChip
-        # This is probably conservative as a border:
-        #min_dist: '$10 * gal_hlr + 10 * @psf.fwhm'
 
-
-
-
-        # But the CosmosR50 calculation is slow.  So instead, just use a constant.
-        # Even though this is even more conservative, it's actually faster, since it avoids the
-        # slow gal_hlr calculation for most of the galaxies.
+        # Even though this is even more conservative than something based on the PSF size,
+        # it's actually faster, since it avoids the slow gal_hlr calculation for most of
+        # the galaxies.
         min_dist: 100
 
 image:
@@ -216,7 +211,6 @@ image:
     # The number of objects across the full focal plane.
     nobjects:
         type: RandomPoisson
-        #mean: 5.0e5  # Expectation value is half a million objects total ~ 8k per chip
         mean: "$(8000*@output.nchips)"
         index_key: exp_num
 
@@ -306,8 +300,6 @@ meta_params:
     # This is a custom field for use with the FocalPlane output type.
     # Variable names here are arbitrary, and will be evaluated once at the start of each
     # focal plane.  The values can be used by the psf field in eval statements.
-    fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
-    fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
     rms_e: 0.01
 
 output:
@@ -342,10 +334,6 @@ output:
             num: obj_num
             x: "$image_pos.x"
             y: "$image_pos.y"
-
-            psf_fwhm: psf.fwhm
-            psf_e1: '$(@psf.ellip).e1'
-            psf_e2: '$(@psf.ellip).e2'
 
             obj_type: '@current_obj_type'
             obj_type_index: '@current_obj_type_index'
