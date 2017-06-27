@@ -293,6 +293,12 @@ input:
             items:
             - { type: Catalog, col: 1 }
             - "$chip_num + 1"
+        image_file_name:
+            type: FormattedStr
+            format: "%s_%02d.fits"
+            items:
+            - { type: Catalog, col: 1 }
+            - "$chip_num + 1"
 
 meta_params:
     # This field has information *about* the PSF (or the exposure in general), which will be used
