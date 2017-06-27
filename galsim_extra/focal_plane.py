@@ -35,7 +35,7 @@ class FocalPlaneBuilder(OutputBuilder):
             try:
                 return galsim.config.ParseValue(config, 'nexp', base, int)[0]
             except:
-                galsim.config.ProcessInput(base)
+                galsim.config.ProcessInput(base, safe_only=True)
                 return galsim.config.ParseValue(config, 'nexp', base, int)[0]
         else:
             return 1
@@ -71,6 +71,7 @@ class FocalPlaneBuilder(OutputBuilder):
         # Get the celestial coordinates of all the chip corners
         corners = []
         for chip_num in range(nchips):
+<<<<<<< HEAD
             if chip_num + 1 not in exclude:
                 # Set the chip num in case needed for parsing values.
                 base['chip_num'] = chip_num
@@ -89,6 +90,27 @@ class FocalPlaneBuilder(OutputBuilder):
                 corners.append(wcs.toWorld(im_pos2))
                 corners.append(wcs.toWorld(im_pos3))
                 corners.append(wcs.toWorld(im_pos4))
+=======
+            # Set the chip num in case needed for parsing values.
+            base['eval_variables']['ichip_num'] = chip_num
+            base['image_num'] = image_num + chip_num
+            base['file_num'] = file_num + chip_num
+
+            wcs = galsim.config.wcs.BuildWCS(base['image'],'wcs', base, logger)
+            xsize = galsim.config.ParseValue(base['image'],'xsize', base, int)[0]
+            ysize = galsim.config.ParseValue(base['image'],'ysize', base, int)[0]
+
+            im_pos1 = galsim.PositionD(0,0)
+            im_pos2 = galsim.PositionD(0,ysize)
+            im_pos3 = galsim.PositionD(xsize,0)
+            im_pos4 = galsim.PositionD(xsize,ysize)
+            corners.append(wcs.toWorld(im_pos1))
+            corners.append(wcs.toWorld(im_pos2))
+            corners.append(wcs.toWorld(im_pos3))
+            corners.append(wcs.toWorld(im_pos4))
+        base['image_num'] = image_num  # Get back to first image_num, file_num
+        base['file_num'] = file_num
+>>>>>>> upstream/wrong_wcs
 
         # Calculate the pointing as the center (mean) of all the position in corners
         x_list, y_list, z_list = zip(*[p.get_xyz() for p in corners])
@@ -96,6 +118,7 @@ class FocalPlaneBuilder(OutputBuilder):
         pointing_y = np.mean(y_list)
         pointing_z = np.mean(z_list)
         pointing = galsim.CelestialCoord.from_xyz(pointing_x, pointing_y, pointing_z)
+        logger.info("Calculated center of focal plane to be %s",pointing)
 
         # Also calculate the min/max ra and dec
         ra_list = [p.ra.wrap(pointing.ra) for p in corners]
@@ -104,11 +127,16 @@ class FocalPlaneBuilder(OutputBuilder):
         fov_maxra = np.max(ra_list)
         fov_mindec = np.min(dec_list)
         fov_maxdec = np.max(dec_list)
+        logger.info("RA range = %.2f - %.2f deg",
+                    fov_minra/galsim.degrees, fov_maxra/galsim.degrees)
+        logger.info("Dec range = %.2f - %.2f deg",
+                    fov_mindec/galsim.degrees, fov_maxdec/galsim.degrees)
 
         # bounds is the bounds in the tangent plane
         proj_list = [ pointing.project(p, projection='gnomonic') for p in corners]
         bounds = galsim.BoundsD()
         for proj in proj_list: bounds += proj
+        logger.info("Bounds in tangent plane = %s (arcsec)",bounds)
 
         # Write these values into the dict in eval_variables, so they can be used in Eval's.
         base['eval_variables']['apointing_ra'] = pointing.ra
@@ -124,12 +152,16 @@ class FocalPlaneBuilder(OutputBuilder):
         base['eval_variables']['ffocal_ymin'] = bounds.ymin
         base['eval_variables']['ffocal_ymax'] = bounds.ymax
         rmax = np.max([proj.x**2 + proj.y**2 for proj in proj_list])**0.5
+        logger.info("Max radius from center of focal plane = %.0f arcsec",rmax)
         base['eval_variables']['ffocal_rmax'] = rmax
         base['eval_variables']['xpointing'] = pointing
         base['eval_variables']['ffocal_r'] = {
             'type' : 'Eval',
             'str' : "math.sqrt(pos.x**2 + pos.y**2)",
-            'ppos' : "$pointing.project(@image.world_pos)"
+            'ppos' : { 'type' : 'Eval',
+                       'str' : "pointing.project(world_pos)",
+                       'cworld_pos' : "@image.world_pos"
+                     }
         }
 
         # Evaluate all the meta parameters and write them into the eval_variables dict.
@@ -158,7 +190,8 @@ class FocalPlaneBuilder(OutputBuilder):
                     { 'type' : 'Sequence', 'index_key' : 'obj_num', 'first' : first } )
             else:
                 base['image']['random_seed'].append(rs)
-            base['image']['noise']['rng_num'] = 1
+            if 'noise' in base['image']:
+                base['image']['noise']['rng_num'] = 1
 
         # We let GalSim do its normal BuildFiles thing now, which would run in parallel
         # if appropriate.  And it writes each image to disk as it gets made rather than holding
@@ -193,8 +226,6 @@ class FocalPlaneBuilder(OutputBuilder):
 
         @param config           The configuration dict for the output type.
         @param base             The base configuration dict.
-        @param image_num        The current image_num.
-        @param obj_num          The current obj_num.
         @param ignore           A list of parameters that are allowed to be in config['output']
                                 that we can ignore here.  i.e. it won't be an error if these
                                 parameters are present.

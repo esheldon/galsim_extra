@@ -1,0 +1,229 @@
+
+# Test how PSFEx and Piff do when the real WCS (i.e. Gary's solution) is used for the rendering,
+# but the FITS header is given the DESDM WCS solution.
+#
+# This example uses the following galsim_extra modules:
+#     WrongWCS image type
+#     FocalPlane output type
+#     Pixmappy wcs type
+#     LogNormal value type
+#     OffChip value type
+#     all_files input type (along with connected NFiles, ThisFileName and ThisFileTag value types)
+#
+# It also requires pixmappy to be installed.
+#
+#   https://github.com/gbernstein/pixmappy
+
+modules:
+    - galsim_extra
+
+# Some variable definitions that let us define things here and then use them again later
+# via either the YAML tag (e.g. *run) or in an eval string (e.g. '$run').
+eval_variables:
+
+    # This corresponds to my 8th version of this script.  So run 008.
+    srun: &run "008"
+
+    # This is the location at BNL of the input files I'm using.
+    sDATADIR: /astro/u/esheldon/des-lensing/meds-making
+
+    # We'll use this a few times, so put it here for convenience.
+    sccdname: { type: ThisFileTag, index: '$chip_num', index_key: 'image_num' }
+
+    # CCD "names" here are just integer numbers, so can convert.
+    iccdnum: '$int(ccdname)'
+
+# We're only drawing stars in this sim.  So just a psf field.  No gal.
+
+# The PSF is coherent across the full field of view.
+# The size has a polynomial component where it gets larger near the edges to
+# simulate a defocus kind of optical feature.  There is also an atmospheric
+# part using a Gaussian process power spectrum model for the shape and size.
+psf:
+    type: Moffat
+    beta: 2.5
+    fwhm: '$fwhm_central + fwhm_a * (focal_r/focal_rmax)**2'
+    ellip:
+        type: PowerSpectrumShear
+    magnify:
+        type: PowerSpectrumMagnification
+    flux:
+        type: RandomDistribution
+        # looks like the slope for the bright end stars in DES r band
+        function: x**-1.5
+        x_min: 1000.0
+        x_max: 1.0e+06
+
+    skip:
+        type: OffChip
+        min_dist: '$10 * @psf.fwhm'
+
+    gsparams:
+        # Without this, some of the really bright stars appear boxy when I turn down the
+        # noise level.  Probably not necessary, but it doesn't slow things down too much.
+        folding_threshold: 1.e-3
+
+image:
+    # The WrongWCS image type is just like Scattered, except for the output_wcs field (see below).
+    type: WrongWCS
+
+    noise:
+        type: Poisson
+
+    sky_level_pixel: '$sky_level'  # Set in meta_params
+
+    random_seed: 8675309
+
+    # The number of objects across the full focal plane.
+    nobjects:
+        type: RandomPoisson
+        mean: 12000  # Roughly 200 stars per chip
+        index_key: exp_num
+
+    xsize: 2048
+    ysize: 4096
+
+    world_pos:
+        type: RADec
+        ra:
+            type: Radians
+            theta: { type: Random, min: "$fov_minra.rad()", max: "$fov_maxra.rad()" }
+        dec:
+            type: Radians
+            theta:
+                type: RandomDistribution
+                function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
+                x_min: "$fov_mindec.rad()"
+                x_max: "$fov_maxdec.rad()"
+
+    wcs:
+        # This is the real wcs used for rendering.  Also, what we'll pass into Piff.
+        type: Pixmappy
+        dir: input
+        file_name: 'zone029.astro'
+        exp: { type: Catalog, col: 0, index_key: exp_num }
+        ccdnum: "$ccdnum"
+
+    output_wcs:
+        # This wcs will be slotted into the image before being written out, so the fits file will
+        # have this one.  This WCS is what DESDM thought the WCS was, and it is what PSFEx will use.
+        # Piff has the option to either use this WCS or be told a different one to use, so we
+        # can test telling Piff to use the Pixmappy solution.
+        type: Fits
+        file_name: { type: ThisFileName, index: '$chip_num' }
+
+
+input:
+    power_spectrum:
+        index_key: exp_num
+        # Heymans et al, 2012 found L0 ~= 3 arcmin, given as 180 arcsec here.
+        e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
+        b_power_function: '@input.power_spectrum.e_power_function'
+        units: arcsec
+        grid_spacing: 10  # arcsec.  Should be smaller than scales of interest in rho1.
+        ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
+        center: 0,0
+        variance: '$rms_e**2'  # rms_e is given in meta_params
+
+    catalog:
+        # This catalog lists the DES exposures to process.
+        file_name: y3_list
+
+    all_files:
+        # all_files uses glob to list all the files in a given directory.
+        # We have different subsets of the CCDs for different exposures, so this lets us get
+        # the right set of chip numbers for each exposure.
+        #
+        # NFiles is an integer value type giving the number of Files in the directory.
+        # ThisFileName gives the current file name to use (indexed by chipnum here).
+        # ThisFileTag gives the part of the file name that replaces the * in the `files` field
+        #     below.  In this case, it is the 2 character ccd number: 01 .. 62.
+        index_key: exp_num
+        dir:
+            type: FormattedStr
+            format: '%s/OPS/finalcut/Y2A1/%s-%s/%s/D%08d/%s/red/immask/'
+            items:
+                - '$DATADIR'
+                - { type: Catalog, col: 2 }
+                - { type: Catalog, col: 3 }
+                - { type: Catalog, col: 4 }
+                - { type: Catalog, col: 0 }
+                - { type: Catalog, col: 5 }
+        files:
+            type: FormattedStr
+            format: 'D%08d_%s_c*_r%s%s_immasked.fits.fz'
+            items:
+                - { type: Catalog, col: 0 }
+                - { type: Catalog, col: 1 }
+                - { type: Catalog, col: 3 }
+                - { type: Catalog, col: 5 }
+
+
+meta_params:
+    # This field has information *about* the PSF (or the exposure in general), which will be used
+    # by the psf field to generate the specific PSFs at the location of each galaxy.
+    # This is a custom field for use with the FocalPlane output type.
+    # Variable names here are arbitrary, and will be evaluated once at the start of each
+    # focal plane.  The values can be used by the psf field in eval statements.
+    fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
+    fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
+
+    # This produces rho1 values from PSFEx that are about the right level compared to data,
+    # so it seems like this might be in the right ball park.
+    rms_e: 0.003
+
+    # This seems to give a reasonable noise level.  The faintest stars have S/N ~= 10.
+    sky_level: { type: Random, min: 50, max: 150 }
+
+
+output:
+    type: FocalPlane
+
+    # The input catalog has a line for each exposure.  So its nobjects is nexp.
+    nexp: '$(@input.catalog).getNObjects()'
+
+    # NFiles is connected to the all_files input.  It gives the number of image files in the
+    # directory for this exposure.  There is one per chip.
+    nchips: { type: NFiles }
+
+    # Use all cores on a node.  This config is designed to be run using a full node at once, and
+    # let GalSim split the work over the available cores.  If you'd rather run on just one core,
+    # remove (or comment out) this line.
+    nproc: -1
+
+    dir: output
+    file_name:
+        type: FormattedStr
+        format: "wrong_wcs_%s_%s_%s.fits.fz"
+        items:
+        - *run
+        - { type: Catalog, col: 0 }
+        - '$ccdname'
+
+    weight:
+        hdu: 1
+
+    truth:
+        file_name :
+            type: FormattedStr
+            format: "truth_%s_%s_%s.fits"
+            items:
+            - *run
+            - { type: Catalog, col: 0 }
+            - '$ccdname'
+
+        columns:
+            num: obj_num
+            ccd_num: '$chip_num'
+            ccd_name: '$ccdname'
+            x: '$image_pos.x'
+            y: '$image_pos.y'
+            sky: '$sky_level'
+            ra: '$@image.world_pos.ra / galsim.degrees'
+            dec: '$@image.world_pos.dec / galsim.degrees'
+
+            fwhm: '$@psf.fwhm * math.sqrt(@psf.magnify)'
+            flux: psf.flux
+            e1: '$(@psf.ellip).g1'
+            e2: '$(@psf.ellip).g2'
+

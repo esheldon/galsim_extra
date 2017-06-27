@@ -272,11 +272,14 @@ input:
         max_flux: 100
 
     power_spectrum:
+        index_key: exp_num
         # Heymans et al, 2012 found L0 ~= 3 arcmin, given as 180 arcsec here.
         e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
         b_power_function: '@input.power_spectrum.e_power_function'
         units: arcsec
-        grid_spacing: 30
+        grid_spacing: 10
+        ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
+        center: 0,0
         variance: '$rms_e**2'  # rms_e is given in meta_params
 
     catalog:
@@ -305,7 +308,7 @@ meta_params:
     # focal plane.  The values can be used by the psf field in eval statements.
     fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
     fwhm_a: { type: LogNormal, mean: 0.1, sigma: 0.1 }
-    rms_e: 0.03
+    rms_e: 0.01
 
 output:
     type: FocalPlane
