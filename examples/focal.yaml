@@ -7,6 +7,7 @@
 #     OffChip value type
 modules:
     - galsim_extra
+    - galsim.des
 
 
 # Some variable definitions that let us define things here and then use them again later
@@ -155,13 +156,7 @@ star:
 # simulate a defocus kind of optical feature.  There is also an atmospheric
 # part using a Gaussian process power spectrum model for the shape and size.
 psf:
-    type: Moffat
-    beta: 2.5
-    fwhm: '$fwhm_central + fwhm_a * (focal_r/focal_rmax)**2'
-    ellip:
-        type: PowerSpectrumShear
-    magnify:
-        type: PowerSpectrumMagnification
+    type: PSFEx
 
 stamp:
     # A custom stamp type in galsim_extra that lets you have multiple kinds of
@@ -204,6 +199,9 @@ stamp:
         type: OffChip
         # This is probably conservative as a border:
         #min_dist: '$10 * gal_hlr + 10 * @psf.fwhm'
+
+
+
 
         # But the CosmosR50 calculation is slow.  So instead, just use a constant.
         # Even though this is even more conservative, it's actually faster, since it avoids the
@@ -287,6 +285,17 @@ input:
         # The version of this in the current directory works on my laptop (and just has one
         # exposure listed).  It would need to be changed to run at scale e.g. at BNL.
         file_name: exp_list
+
+    des_psfex:
+        dir: 
+            type: Catalog
+            col: 0
+        file_name:
+            type: FormattedStr
+            format: "%s_%02d_psfcat.psf"
+            items:
+            - { type: Catalog, col: 1 }
+            - "$chip_num + 1"
 
 meta_params:
     # This field has information *about* the PSF (or the exposure in general), which will be used
