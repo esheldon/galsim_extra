@@ -8,7 +8,8 @@ class TestFitsNoise(unittest.TestCase):
     def setUp(self):
         #change this to test on a different machine
         self.fitsdir = "/Users/adamwheeler/Dropbox/y1_test"
-        self.fitsfile = "/DECam_00241238_01.fits"
+        self.fitsfile = "DECam_00241238_01.fits"
+        self.bkgfile = "DECam_00241238_01_bkg.fits"
 
         self.hdus = fits.open(self.fitsdir + '/' + self.fitsfile)
         self.hdus.verify('silentfix')
@@ -35,7 +36,7 @@ class TestFitsNoise(unittest.TestCase):
     def assertImEqual(self, im1, im2):
         np.testing.assert_array_almost_equal(im1.array, im2.array, decimal=2)
 
-    def tests_just_noise(self):
+    def test_just_noise(self):
         self.config['image']['noise'] = \
             {'type': 'FitsNoise',
              'dir': self.fitsdir,
@@ -49,5 +50,26 @@ class TestFitsNoise(unittest.TestCase):
         self.image.addNoise(noise)
         self.assertImEqual(image, self.image)
             
+    def test_noise_and_background(self):
+        self.config['image']['noise'] = \
+            {'type': 'FitsNoise',
+             'dir': self.fitsdir,
+             'file_name': self.fitsfile,
+             'hdu': 2,
+             'bkg_file_name': self.bkgfile,
+             'bkg_hdu': 0}
+        image = galsim.config.BuildImage(self.config)
+
+        varmap = 1.0/self.hdus[2].data
+        varimage = galsim.image.Image(varmap)
+        noise = galsim.noise.VariableGaussianNoise(self.rng, varimage)
+        self.image.addNoise(noise)
+
+        hdus = fits.open(self.fitsdir + '/' + self.bkgfile)
+        hdus.verify('silentfix')
+        self.image += galsim.image.Image(hdus[0].data)
+
+        self.assertImEqual(image, self.image)
+
 if __name__ == '__main__':
     unittest.main()
