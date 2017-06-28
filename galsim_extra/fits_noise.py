@@ -31,6 +31,8 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
 
             im += galsim.image.Image(hdu.data)
 
+            hdus.close()
+
 
     def getNoiseVariance(self, config, base):
         params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)        
@@ -42,6 +44,8 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
         hdu.verify('silentfix')
 
         varmap = 1.0/hdu.data
+
+        hdus.close()
 
         #wcs = base['wcs'] #does this need to be interpretted by galsim somehow?
         return galsim.image.Image(varmap, wcs=None)
