@@ -232,7 +232,7 @@ image:
 
     noise:
         type: FitsNoise
-        hdu: 3
+        hdu: 2
         dir: '@image.wcs.dir'
         file_name: '@image.wcs.file_name'
         bkg_hdu: 1
