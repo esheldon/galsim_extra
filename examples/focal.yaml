@@ -225,7 +225,7 @@ image:
     # The number of objects across the full focal plane.
     nobjects:
         type: RandomPoisson
-        mean: 8000  # Expectation value is half a million objects total ~ 8k per chip
+        mean: "$(8000*@output.nchips)"  
         index_key: exp_num
 
     xsize: 2048
@@ -304,7 +304,7 @@ output:
     # also access it in eval statements as just exp_num.
     nexp: '$(@input.catalog).getNObjects()'
 
-    nchips: 2  # The number of chips per exposure
+    nchips: 62  # The number of chips per exposure
 
     dir: output
     file_name:
