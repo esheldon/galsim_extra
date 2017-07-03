@@ -55,14 +55,13 @@ class FocalPlaneBuilder(OutputBuilder):
         @returns a list of the images built
         """
         req = { 'nchips' : int, }
-        opt = { 'nexp' : int, 'exclude': list}
+        opt = { 'nexp' : int, }
         ignore += [ 'file_name', 'dir' ]
 
         kwargs, safe = galsim.config.GetAllParams(config, base, req=req, opt=opt, ignore=ignore)
 
         nchips = kwargs['nchips']
         nexp = kwargs.get('nchips',1)
-        exclude = kwargs.get('exclude', [])
 
         if 'eval_variables' not in base:
             base['eval_variables'] = {}
@@ -71,19 +70,23 @@ class FocalPlaneBuilder(OutputBuilder):
         # Get the celestial coordinates of all the chip corners
         corners = []
         for chip_num in range(nchips):
-            if chip_num + 1 not in exclude:
-                wcs = galsim.config.wcs.BuildWCS(base['image'],'wcs', base, logger)
-                xsize = galsim.config.ParseValue(base['image'],'xsize', base, int)[0]
-                ysize = galsim.config.ParseValue(base['image'],'ysize', base, int)[0]
+            # Set the chip num in case needed for parsing values.
+            base['eval_variables']['ichip_num'] = chip_num
+            base['image_num'] = image_num + chip_num
+            base['file_num'] = file_num + chip_num
 
-                im_pos1 = galsim.PositionD(0,0)
-                im_pos2 = galsim.PositionD(0,ysize)
-                im_pos3 = galsim.PositionD(xsize,0)
-                im_pos4 = galsim.PositionD(xsize,ysize)
-                corners.append(wcs.toWorld(im_pos1))
-                corners.append(wcs.toWorld(im_pos2))
-                corners.append(wcs.toWorld(im_pos3))
-                corners.append(wcs.toWorld(im_pos4))
+            wcs = galsim.config.wcs.BuildWCS(base['image'],'wcs', base, logger)
+            xsize = galsim.config.ParseValue(base['image'],'xsize', base, int)[0]
+            ysize = galsim.config.ParseValue(base['image'],'ysize', base, int)[0]
+
+            im_pos1 = galsim.PositionD(0,0)
+            im_pos2 = galsim.PositionD(0,ysize)
+            im_pos3 = galsim.PositionD(xsize,0)
+            im_pos4 = galsim.PositionD(xsize,ysize)
+            corners.append(wcs.toWorld(im_pos1))
+            corners.append(wcs.toWorld(im_pos2))
+            corners.append(wcs.toWorld(im_pos3))
+            corners.append(wcs.toWorld(im_pos4))
         base['image_num'] = image_num  # Get back to first image_num, file_num
         base['file_num'] = file_num
 
