@@ -155,8 +155,8 @@ star:
 # The size has a polynomial component where it gets larger near the edges to
 # simulate a defocus kind of optical feature.  There is also an atmospheric
 # part using a Gaussian process power spectrum model for the shape and size.
-psf:
-    type: DES_PSFEx
+#psf:
+#    type: DES_PSFEx
 
 stamp:
     # A custom stamp type in galsim_extra that lets you have multiple kinds of
@@ -283,22 +283,22 @@ input:
         # exposure listed).  It would need to be changed to run at scale e.g. at BNL.
         file_name: exp_list
 
-    des_psfex:
-        dir: 
-            type: Catalog
-            col: 0
-        file_name:
-            type: FormattedStr
-            format: "%s_%02d_psfcat.psf"
-            items:
-            - { type: Catalog, col: 1 }
-            - "$chip_num + 1"
-        image_file_name:
-            type: FormattedStr
-            format: "%s_%02d.fits"
-            items:
-            - { type: Catalog, col: 1 }
-            - "$chip_num + 1"
+    #des_psfex:
+    #    dir: 
+    #        type: Catalog
+    #        col: 0
+    #    file_name:
+    #        type: FormattedStr
+    #        format: "%s_%02d_psfcat.psf"
+    #        items:
+    #        - { type: Catalog, col: 1 }
+    #        - "$chip_num + 1"
+    #    image_file_name:
+    #        type: FormattedStr
+    #        format: "%s_%02d.fits.fz"
+    #        items:
+    #        - { type: Catalog, col: 1 }
+    #        - "$chip_num + 1"
 
 meta_params:
     # This field has information *about* the PSF (or the exposure in general), which will be used
@@ -317,7 +317,7 @@ output:
     # also access it in eval statements as just exp_num.
     nexp: '$(@input.catalog).getNObjects()'
 
-    nchips: 62 # The number of chips per exposure
+    nchips: 2 # The number of chips per exposure
     exclude: [31, 61]
 
     dir: output
