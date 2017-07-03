@@ -1,4 +1,6 @@
-
+# This file builds off of focal.yaml, but uses the noise 
+# (via the weightmap), background, and PSF from real image,
+# in addition to the WCS
 template: focal.yaml
 
 #use galsim.des (for DES_PSFEx) as well as galsim_extra
