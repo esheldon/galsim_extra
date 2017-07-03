@@ -6,9 +6,7 @@ modules:
     - galsim_extra
     - galsim.des
 
-psf:
-    type: DES_PSFEx
-
+#get noise and background from real images
 image.noise:
     type: FitsNoise
     hdu: 2
@@ -22,7 +20,8 @@ image.noise:
         - { type: Catalog, col: 1 }
         - "$chip_num + 1"
 
-
+#use DES_PSFEx for psfs
+psf: {type: DES_PSFEx}
 input.des_psfex:
     dir: 
         type: Catalog
@@ -41,7 +40,6 @@ input.des_psfex:
         - "$chip_num + 1"
 
 output.nchips: 2
-
 #output.exclude: [31, 61]
 
 #remove psf_params from output
