@@ -17,7 +17,7 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
         var = self.getNoiseVariance(config, base)
         noise = galsim.noise.VariableGaussianNoise(rng, var)
         im.addNoise(noise)
-
+        
         #add background if applicable
         params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)
         if 'bkg_hdu' in params:
