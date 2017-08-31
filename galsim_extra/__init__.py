@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import glob, os
 
 d = os.path.dirname(__file__)
