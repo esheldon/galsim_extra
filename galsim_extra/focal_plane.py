@@ -117,8 +117,8 @@ class FocalPlaneBuilder(OutputBuilder):
         logger.info("Bounds in tangent plane = %s (arcsec)",bounds)
 
         # Write these values into the dict in eval_variables, so they can be used in Eval's.
-        base['eval_variables']['apointing_ra'] = pointing.ra
-        base['eval_variables']['apointing_dec'] = pointing.dec
+        base['eval_variables']['aworld_center_ra'] = pointing.ra
+        base['eval_variables']['aworld_center_dec'] = pointing.dec
         base['eval_variables']['afov_minra'] = fov_minra
         base['eval_variables']['afov_maxra'] = fov_maxra
         base['eval_variables']['afov_mindec'] = fov_mindec
@@ -132,12 +132,13 @@ class FocalPlaneBuilder(OutputBuilder):
         rmax = np.max([proj.x**2 + proj.y**2 for proj in proj_list])**0.5
         logger.info("Max radius from center of focal plane = %.0f arcsec",rmax)
         base['eval_variables']['ffocal_rmax'] = rmax
-        base['eval_variables']['xpointing'] = pointing
+        base['eval_variables']['xworld_center'] = pointing
+        base['world_center'] = pointing
         base['eval_variables']['ffocal_r'] = {
             'type' : 'Eval',
             'str' : "math.sqrt(pos.x**2 + pos.y**2)",
             'ppos' : { 'type' : 'Eval',
-                       'str' : "pointing.project(world_pos)",
+                       'str' : "world_center.project(world_pos)",
                        'cworld_pos' : "@image.world_pos"
                      }
         }
