@@ -309,7 +309,7 @@ output:
     dir: output
     file_name:
         type: FormattedStr
-        format: "sim_%s_%02d.fits"
+        format: "sim_%s_%02d.fits.fz"
         items:
         - { type: Catalog, col: 1 }
         - "$chip_num + 1"
