@@ -61,7 +61,7 @@ class FocalPlaneBuilder(OutputBuilder):
         kwargs, safe = galsim.config.GetAllParams(config, base, req=req, opt=opt, ignore=ignore)
 
         nchips = kwargs['nchips']
-        nexp = kwargs.get('nchips',1)
+        nexp = kwargs.get('nexp',1)
 
         if 'eval_variables' not in base:
             base['eval_variables'] = {}
