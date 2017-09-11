@@ -225,7 +225,7 @@ image:
     # The number of objects across the full focal plane.
     nobjects:
         type: RandomPoisson
-        mean: 5.0e5  # Expectation value is half a million objects total ~ 8k per chip
+        mean: "$(8000*@output.nchips)"  
         index_key: exp_num
 
     xsize: 2048
