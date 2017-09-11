@@ -1,0 +1,99 @@
+# This file builds off of focal.yaml, but uses the noise 
+# (via the weightmap), background, and PSF from real image,
+# in addition to the WCS
+template: focal.yaml
+
+#use galsim.des (for DES_PSFEx) as well as galsim_extra
+modules:
+    - galsim_extra
+    - galsim.des
+
+output.nchips: 1
+image:
+    type: Scattered
+
+    noise:
+        type: FitsNoise
+        hdu: 3
+        dir: '@image.wcs.dir'
+        file_name: '@image.wcs.file_name'
+        bkg_hdu: 1
+        bkg_file_name:
+            type: FormattedStr
+            format: "%s_%02d_bkg.fits.fz"
+            items:
+            - { type: Catalog, col: 1 }
+            - "$chip_num + 1"
+
+    random_seed: 8675309
+    # The number of objects across the full focal plane.
+    nobjects:
+        type: RandomPoisson
+        mean: "$(8000*@output.nchips)"
+        index_key: exp_num
+
+    xsize: 2048
+    ysize: 4096
+
+    world_pos:
+        type: RADec
+        ra:
+            type: Radians
+            theta: { type: Random, min: "$fov_minra.rad()", max: "$fov_maxra.rad()" }
+        dec:
+            type: Radians
+            theta:
+                type: RandomDistribution
+                function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
+                x_min: "$fov_mindec.rad()"
+                x_max: "$fov_maxdec.rad()"
+
+    wcs:
+        # Go through the exp_list catalog and sequentially use each exposure once.
+        type: Fits
+        dir:
+            type: Catalog
+            col: 0
+        file_name:
+            type: FormattedStr                                                                              
+            format: "%s_%02d.fits.fz"
+            items:
+            - { type: Catalog, col: 1 }
+            - "$chip_num + 1"
+
+#use DES_PSFEx for psfs
+psf: {type: DES_PSFEx}
+input.des_psfex:
+    dir: 
+        type: Catalog
+        col: 0
+    file_name:
+        type: FormattedStr
+        format: "%s_%02d.psf"
+        items:
+        - { type: Catalog, col: 1 }
+        - "$chip_num + 1"
+    image_file_name:
+        type: FormattedStr
+        format: "%s_%02d.fits.fz"
+        items:
+        - { type: Catalog, col: 1 }
+        - "$chip_num + 1"
+
+#remove psf_params from output
+output.truth.columns:
+    num: obj_num
+    x: "$image_pos.x"
+    y: "$image_pos.y"
+
+    obj_type: '@current_obj_type'
+    obj_type_index: '@current_obj_type_index'
+    flux: "$(@current_obj).flux"
+    shear_g1: stamp.shear.g1
+    shear_g2: stamp.shear.g2
+
+    gal_hlr: '$gal_hlr'
+    bulge_g1: '$bulge_g1'
+    bulge_g2: '$bulge_g2'
+    disk_g1: '$disk_g1'
+    disk_g2: '$disk_g2'
