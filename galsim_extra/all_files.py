@@ -52,7 +52,7 @@ class AllFiles(object):
                 #get indices of ?, and make sure they are consecutive
                 inds = [i for (i,c) in enumerate(files) if c=="?"] #this gets the indices
                 glob_symbol="?"*len(inds)
-                if not sorted(inds) == range(min(inds), max(inds)+1): #this checks they're contiguous
+                if glob_symbol not in files: #this checks they're contiguous
                     raise ValueError("Only a contiguous series of ? characters is allowed")
 
         if ('*' in dir) or ('?' in dir):
