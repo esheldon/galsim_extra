@@ -134,6 +134,7 @@ def TileDecMax(config, base, value_type):
     return tile.get_max_dec()
 
 galsim.config.RegisterInputType('tile', galsim.config.InputLoader(TileInput, file_scope=True))
+galsim.config.RegisterValueType('ThisExpNum', ThisExpNum, [int], input_type='tile')
 galsim.config.RegisterValueType('TileNFiles', TileNFiles, [int], input_type='tile')
 galsim.config.RegisterValueType('TileNExp', TileNExp, [int], input_type='tile')
 galsim.config.RegisterValueType('TileThisFileName', TileThisFileName, [str], input_type='tile')
@@ -165,8 +166,8 @@ class TileBuilder(OutputBuilder):
         """
         # This is the first function from the OutputBuilder that gets called, so this is the
         # earliest that we get add this to the list of valid index keys.
-        if 'exp_num' not in galsim.config.process.valid_index_keys:
-            galsim.config.process.valid_index_keys += ['exp_num']
+        #if 'exp_num' not in galsim.config.process.valid_index_keys:
+        #    galsim.config.process.valid_index_keys += ['exp_num']
         if 'nfiles' in config:
             return galsim.config.ParseValue(config, 'nfiles', base, int)[0]
         else:
