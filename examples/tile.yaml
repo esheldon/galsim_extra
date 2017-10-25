@@ -9,7 +9,7 @@ modules:
 
 eval_variables:
         srun: &run "001"
-        simage_path: { type: TileThisFileName, index_key: 'file_num' }
+        simage_path: { type: TileThisFileName, index_key: 'image_num' }
 
 input:
     tile:  
@@ -27,14 +27,14 @@ input:
     #    center: 0,0
     #    variance: '$rms_e**2'  # rms_e is given in meta_params
 
-meta_params:
-    # This field has information *about* the PSF (or the exposure in general), which will be used
-    # by the psf field to generate the specific PSFs at the location of each galaxy.
-    # This is a custom field for use with the FocalPlane output type.
-    # Variable names here are arbitrary, and will be evaluated once at the start of each
-    # focal plane.  The values can be used by the psf field in eval statements.
-    fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
-    rms_e: 0.01
+#meta_params:
+#    # This field has information *about* the PSF (or the exposure in general), which will be used
+#    # by the psf field to generate the specific PSFs at the location of each galaxy.
+#    # This is a custom field for use with the FocalPlane output type.
+#    # Variable names here are arbitrary, and will be evaluated once at the start of each
+#    # focal plane.  The values can be used by the psf field in eval statements.
+#    fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
+#    rms_e: 0.01
 
 image:
     type: Scattered
@@ -55,15 +55,16 @@ image:
     world_pos:
         type: RADec
         ra:
-            type: Radians
-            theta: { type: Random, min: "$(@input.tile.get_min_ra())", max: "$(@input.tile.get_max_ra())" }
+            type: Degrees
+            theta: { type: Random, min: 0., max: 10. }
+            #theta: { type: Random, min: "$(@input.tile.get_min_ra())", max: "$(@input.tile.get_max_ra())" }
         dec:
-            type: Radians
+            type: Degrees
             theta:
                 type: RandomDistribution
                 function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
-                x_min: "$(@input.tile.get_min_dec())"
-                x_max: "$(@input.tile.get_max_dec())"
+                x_min: 10. #"$(@input.tile.get_min_dec())"
+                x_max: 10. #"$(@input.tile.get_max_dec())"
 
     wcs:
         # Go through the exp_list catalog and sequentially use each exposure once.
@@ -77,13 +78,13 @@ image:
 psf:
     type: Moffat
     beta: 2.5
-    fwhm: { type : Eval, key : fwhm, index_key : exp_num }
+    fwhm: 0.9 #{ type : Eval, key : fwhm_central, index_key : exp_num }
     ellip: 0.01
 
-gal:
-    type: Exponential
-    flux : { type : Catalog , col : flux }
-    half_light_radius : { type : Catalog , col : size }
+#gal:
+#    type: Exponential
+#    flux : { type : Catalog , col : flux }
+#    half_light_radius : { type : Catalog , col : size }
 
 stamp:
     type: Basic
@@ -119,4 +120,4 @@ output:
             num: obj_num
             x: "$image_pos.x"
             y: "$image_pos.y"
-            flux: gal.flux
+            #flux: gal.flux
