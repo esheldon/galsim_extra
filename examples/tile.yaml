@@ -1,0 +1,134 @@
+# This example config file uses a number of the custom modules available in galsim_extra including
+#     DesTile output type
+#     MixedScene stamp type
+#     CosmosR50, CosmosFlux value types along with cosmos_sampler input type
+#     LogNormal value type
+#     OffChip value type
+modules:
+    - galsim_extra
+
+eval_variables:
+        srun: &run "001"
+        #sccdname: { type: ThisFileTag, index: '$chip_num', index_key: 'image_num' }
+        simage_path: { type: TileThisFileName, index_key: 'file_num' }
+
+input:
+    tile:  
+        source_list: DES0544-2249_r_fcut-flist-y3v02_test.dat
+        coadd_file: /global/cscratch1/sd/maccrann/DES/meds/y3v02/DES0544-2249/sources-r/OPS/multiepoch/Y3A1/r2689/DES0544-2249/p01/coadd/DES0544-2249_r2689p01_r.fits.fz
+
+    power_spectrum:
+        index_key: exp_num
+        # Heymans et al, 2012 found L0 ~= 3 arcmin, given as 180 arcsec here.
+        e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
+        b_power_function: '@input.power_spectrum.e_power_function'
+        units: arcsec
+        grid_spacing: 10
+        ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
+        center: 0,0
+        variance: '$rms_e**2'  # rms_e is given in meta_params
+
+meta_params:
+    # This field has information *about* the PSF (or the exposure in general), which will be used
+    # by the psf field to generate the specific PSFs at the location of each galaxy.
+    # This is a custom field for use with the FocalPlane output type.
+    # Variable names here are arbitrary, and will be evaluated once at the start of each
+    # focal plane.  The values can be used by the psf field in eval statements.
+    fwhm_central: { type: LogNormal, mean: 0.9, sigma: 0.1 }
+    rms_e: 0.01
+
+image:
+    type: Scattered
+
+    noise:
+        type: Gaussian
+        variance: 1.
+
+    # Note: The real distribution of sky levels probably isn't flat.  It's probably bimodal,
+    # depending on whether the moon is up.  But this is probably ok for now.
+    #sky_level: 1. #{ type: Random, min: 5000, max: 15000, index_key: exp_num }
+
+    random_seed: 8675309
+
+    # The number of objects across the full focal plane.
+    nobjects: 1000 # '$(@input.catalog).getNObjects()'
+
+    xsize: 2048
+    ysize: 4096
+
+    world_pos:
+        type: RADec
+        ra:
+            type: Radians
+            theta: { type: Random, min: "$(@input.tile.get_min_ra())", max: "$(@input.tile.get_max_ra())" }
+        dec:
+            type: Radians
+            theta:
+                type: RandomDistribution
+                function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
+                x_min: "$(@input.tile.get_min_dec())"
+                x_max: "$(@input.tile.get_max_dec())"
+
+    wcs:
+        # Go through the exp_list catalog and sequentially use each exposure once.
+        type: Fits
+        file_name: '$image_path'
+
+# The PSF is coherent across the full field of view.
+# The size has a polynomial component where it gets larger near the edges to
+# simulate a defocus kind of optical feature.  There is also an atmospheric
+# part using a Gaussian process power spectrum model for the shape and size.
+psf:
+    type: Moffat
+    beta: 2.5
+    fwhm: { type : Eval, key : fwhm, index_key : exp_num }
+    ellip:
+        type: PowerSpectrumShear
+    magnify:
+        type: PowerSpectrumMagnification
+    gsparams:
+        # Without this, some of the really bright stars appear boxy when I turn down the
+        # noise level.  Probably not necessary, but it doesn't slow things down too much.
+        folding_threshold: 1.e-3
+
+gal:
+    type: Exponential
+    flux : { type : Catalog , col : flux }
+    half_light_radius : { type : Catalog , col : size }
+
+
+stamp:
+    type: Basic
+    skip:
+        type: OffChip
+        min_dist: 100
+
+output:
+    type: DesTile
+
+    # The number of exposures to build
+    # Note: the FocalPlane output type adds another available index key, exp_num.  This can
+    # be used as an index_key instead of the usual file_num, image_num, or obj_num.  You can
+    # also access it in eval statements as just exp_num.
+    nexp: 1 #{ type: TileNExp }    
+    nimages: 1 #{ type: TileNFiles }  # The number of chips per exposure
+
+    dir: output
+    file_name:
+        type: FormattedStr
+        format: "sim_%s.fits"
+        items:
+        - { type: Eval, str: "os.path.basename(image_path)" }
+
+    truth:
+        file_name :
+            type: FormattedStr
+            format: "truth_%s"
+            items:
+            - { type: Eval, str: "os.path.basename(image_path)" }
+
+        columns:
+            num: obj_num
+            x: "$image_pos.x"
+            y: "$image_pos.y"
+            flux: gal.flux

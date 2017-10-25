@@ -44,26 +44,26 @@ class TileInput(object):
                 im_dir, im_file = os.path.dirname(im_path), os.path.basename(im_path)
                 if im_dir not in self.unique_im_dirs:
                     self.unique_im_dirs.append(im_dir)
-                exp_num = unique_im_dirs.index(im_dir)
+                exp_num = self.unique_im_dirs.index(im_dir)
                 self.exp_nums.append(exp_num)
                 self.files.append(os.path.join(im_path,im_file))
                 self.mag_zps.append(mag_zp)
 
         #Also read in coadd_file to get bounds
         coadd_header = galsim.FitsHeader(file_name = coadd_file)
-        wcs = galsim.wcs.readFromFitsHeader(coadd_header)
+        wcs,origin = galsim.wcs.readFromFitsHeader(coadd_header)
         xsize = coadd_header['NAXIS1']
         ysize = coadd_header['NAXIS2']
-        xmin = galsim.PositionD(0,0)
-        xmax = galsim.PositionD(0,ysize)
-        ymin = galsim.PositionD(xsize,0)
-        ymax = galsim.PositionD(xsize,ysize)
+        im_pos1 = galsim.PositionD(0,0)
+        im_pos2 = galsim.PositionD(0,ysize)
+        im_pos3 = galsim.PositionD(xsize,0)
+        im_pos4 = galsim.PositionD(xsize,ysize)
         corners = []
         corners.append(wcs.toWorld(im_pos1))
         corners.append(wcs.toWorld(im_pos2))
         corners.append(wcs.toWorld(im_pos3))
         corners.append(wcs.toWorld(im_pos4))
-        ra_list = [p.ra.wrap(pointing.ra) for p in corners]
+        ra_list = [p.ra.wrap(corners[0].ra) for p in corners]
         dec_list = [p.dec for p in corners]
         self.minra = np.min(ra_list)
         self.maxra = np.max(ra_list)
@@ -101,11 +101,11 @@ class TileInput(object):
 
 def TileNFiles(config, base, value_type):
     tile = galsim.config.GetInputObj('tile', config, base, 'TileNFiles')
-    return gile.get_nfile()
+    return tile.get_nfile()
 
 def TileNExp(config, base, value_type):
     tile = galsim.config.GetInputObj('tile', config, base, 'TileNExp')
-    return gile.get_nexp()
+    return tile.get_nexp()
 
 def TileThisFileName(config, base, value_type):
     tile = galsim.config.GetInputObj('tile', config, base, 'TileThisFileName')
@@ -136,7 +136,7 @@ def TileDecMax(config, base, value_type):
 galsim.config.RegisterInputType('tile', galsim.config.InputLoader(TileInput, file_scope=True))
 galsim.config.RegisterValueType('TileNFiles', TileNFiles, [int], input_type='tile')
 galsim.config.RegisterValueType('TileNExp', TileNExp, [int], input_type='tile')
-galsim.config.RegisterValueType('TileThisFileName', ThisFileName, [str], input_type='tile')
+galsim.config.RegisterValueType('TileThisFileName', TileThisFileName, [str], input_type='tile')
 galsim.config.RegisterValueType('TileRAMin', TileRAMin, [float], input_type='tile')
 galsim.config.RegisterValueType('TileRAMax', TileRAMax, [float], input_type='tile')
 galsim.config.RegisterValueType('TileDecMin', TileDecMin, [float], input_type='tile')
@@ -188,102 +188,29 @@ class TileBuilder(OutputBuilder):
         """
         #n_images is the number of images in the tile, across all the input exposures, of which
         #there are nexp.
-        req = { 'n_images' : int, 'nexp' : int}
+        req = { 'nimages' : int, 'nexp' : int}
         ignore += [ 'file_name', 'dir' ]
 
-        kwargs, safe = galsim.config.GetAllParams(config, base, req=req, opt=opt, ignore=ignore)
+        kwargs, safe = galsim.config.GetAllParams(config, base, req=req, ignore=ignore)
 
         nimages, nexp = kwargs['nimages'], kwargs['nexp']
 
         if 'eval_variables' not in base:
             base['eval_variables'] = {}
-        #base['eval_variables']['iexp_num'] = file_num
 
-       # Get the celestial coordinates of all the chip corners
-        #corners = []
-        #for chip_num in range(nchips):
-        #    #print base['image']['wcs']
-        #    # Set the chip num in case needed for parsing values.
-        #    base['eval_variables']['ichip_num'] = chip_num
-        #    base['image_num'] = image_num + chip_num
-        #    #base['file_num'] = file_num + chip_num
-#
-        #    wcs = galsim.config.wcs.BuildWCS(base['image'],'wcs', base, logger)
-        #    xsize = galsim.config.ParseValue(base['image'],'xsize', base, int)[0]
-        #    ysize = galsim.config.ParseValue(base['image'],'ysize', base, int)[0]
-#
-        #    im_pos1 = galsim.PositionD(0,0)
-        #    im_pos2 = galsim.PositionD(0,ysize)
-        #    im_pos3 = galsim.PositionD(xsize,0)
-        #    im_pos4 = galsim.PositionD(xsize,ysize)
-        #    corners.append(wcs.toWorld(im_pos1))
-        #    corners.append(wcs.toWorld(im_pos2))
-        #    corners.append(wcs.toWorld(im_pos3))
-        #    corners.append(wcs.toWorld(im_pos4))
-#
-        #base['image_num'] = image_num  # Get back to first image_num, file_num
-        ##base['file_num'] = file_num
-#
-        ## Calculate the pointing as the center (mean) of all the position in corners
-        #x_list, y_list, z_list = zip(*[p.get_xyz() for p in corners])
-        #pointing_x = np.mean(x_list)
-        #pointing_y = np.mean(y_list)
-        #pointing_z = np.mean(z_list)
-        #pointing = galsim.CelestialCoord.from_xyz(pointing_x, pointing_y, pointing_z)
-        #logger.info("Calculated center of focal plane to be %s",pointing)
-#
-        ## Also calculate the min/max ra and dec
-        #ra_list = [p.ra.wrap(pointing.ra) for p in corners]
-        #dec_list = [p.dec for p in corners]
-        #fov_minra = np.min(ra_list)
-        #fov_maxra = np.max(ra_list)
-        #fov_mindec = np.min(dec_list)
-        #fov_maxdec = np.max(dec_list)
-        #logger.info("RA range = %.2f - %.2f deg",
-        #            fov_minra/galsim.degrees, fov_maxra/galsim.degrees)
-        #logger.info("Dec range = %.2f - %.2f deg",
-        #            fov_mindec/galsim.degrees, fov_maxdec/galsim.degrees)
-#
-        ## bounds is the bounds in the tangent plane
-        #proj_list = [ pointing.project(p, projection='gnomonic') for p in corners]
-        #bounds = galsim.BoundsD()
-        #for proj in proj_list: bounds += proj
-        #logger.info("Bounds in tangent plane = %s (arcsec)",bounds)
-#
-        ## Write these values into the dict in eval_variables, so they can be used in Eval's.
-        #base['eval_variables']['aworld_center_ra'] = pointing.ra
-        #base['eval_variables']['aworld_center_dec'] = pointing.dec
-        #base['eval_variables']['afov_minra'] = fov_minra
-        #base['eval_variables']['afov_maxra'] = fov_maxra
-        #base['eval_variables']['afov_mindec'] = fov_mindec
-        #base['eval_variables']['afov_maxdec'] = fov_maxdec
-        #base['eval_variables']['ifirst_image_num'] = image_num
-        #base['eval_variables']['ichip_num'] = '$image_num - first_image_num'
-        #base['eval_variables']['ffocal_xmin'] = bounds.xmin
-        #base['eval_variables']['ffocal_xmax'] = bounds.xmax
-        #base['eval_variables']['ffocal_ymin'] = bounds.ymin
-        #base['eval_variables']['ffocal_ymax'] = bounds.ymax
-        #rmax = np.max([proj.x**2 + proj.y**2 for proj in proj_list])**0.5
-        #logger.info("Max radius from center of focal plane = %.0f arcsec",rmax)
-        #base['eval_variables']['ffocal_rmax'] = rmax
-        #base['eval_variables']['xworld_center'] = pointing
-        #base['world_center'] = pointing
-        #base['eval_variables']['ffocal_r'] = {
-        #    'type' : 'Eval',
-        #    'str' : "math.sqrt(pos.x**2 + pos.y**2)",
-        #    'ppos' : { 'type' : 'Eval',
-        #               'str' : "world_center.project(world_pos)",
-        #               'cworld_pos' : "@image.world_pos"
-        #             }
-        #}
-
-        # Evaluate the meta parameters per exposure and write them into the eval_variables dict.
-        # I'm sure there is a neater way of doing this, but's let's go with this for now...
+        #Generate psf parameters for each exposure from the meta_params
         if 'meta_params' in base:
+            meta_param_list_dict = {}  #dict of meta_param lists
             for iexp in range(nexp):
                 for key in base['meta_params']:
+                    if key not in meta_param_list_dict:
+                        meta_param_list_dict[key]=[]
                     param = galsim.config.ParseValue(base['meta_params'], key, base, float)[0]
-                    base['eval_variables']['f%s_%d'%(key, iexp)] = param
+                    meta_param_list_dict[key].append(param)
+            #Now save to eval variables - the idea is the psf parameters for the current exposure can be
+            #recovered from this list using exp_num
+            base['eval_variables']['f%s'%(key)] = { 'type' : 'List',
+                                                          'items' : meta_param_list_dict[key] }
 
         # Set the random numbers to repeat for the objects so we get the same objects in the field
         # each time.
@@ -331,7 +258,7 @@ class TileBuilder(OutputBuilder):
 
         # The calling function is expecting to get some images to write.  Give it something
         # to avoid errors, but we won't write these.
-        return [galsim.Image()] * nchips
+        return [galsim.Image()] * nimages
 
     def getFilename(self, config, base, logger):
         """Get the file_name for the current file being worked on.
@@ -352,13 +279,13 @@ class TileBuilder(OutputBuilder):
         # buildImages, then it won't be ready, so just check.
         if 'eval_variables' not in base:
             base['eval_variables'] = {}
-        if 'ichip_num' not in base['eval_variables']:
-            base['eval_variables']['ichip_num'] = 0
-        if 'iexp_num' not in base['eval_variables']:
-            base['eval_variables']['iexp_num'] = base['file_num']
-        if 'exp_num' not in base:
-            base['exp_num'] = base['file_num']
-        return super(FocalPlaneBuilder, self).getFilename(config, base, logger)
+        #if 'ichip_num' not in base['eval_variables']:
+        #    base['eval_variables']['ichip_num'] = 0
+        #if 'iexp_num' not in base['eval_variables']:
+        #    base['eval_variables']['iexp_num'] = base['file_num']
+        #if 'exp_num' not in base:
+        #    base['exp_num'] = base['file_num']
+        return super(TileBuilder, self).getFilename(config, base, logger)
 
     def writeFile(self, data, file_name, config, base, logger):
         """Write the data to a file.
@@ -384,9 +311,9 @@ class TileBuilder(OutputBuilder):
 
         @returns the number of images
         """
-        if 'nchips' not in config:
-            raise AttributeError("Attribute output.nchips is required for output.type = FocalPlane")
-        return galsim.config.ParseValue(config,'nchips',base,int)[0]
+        if 'nimages' not in config:
+            raise AttributeError("Attribute output.nimages is required for output.type = DesTile")
+        return galsim.config.ParseValue(config,'nimages',base,int)[0]
 
     # Both of these steps will already have been done by the Fits builder.  Don't do anything here.
     def addExtraOutputHDUs(self, config, data, logger):
@@ -395,6 +322,6 @@ class TileBuilder(OutputBuilder):
     def writeExtraOutputs(self, config, data, logger):
         pass
 
-#galsim.config.process.top_level_fields += ['meta_params']
-#galsim.config.output.RegisterOutputType('FocalPlane', FocalPlaneBuilder())
+galsim.config.process.top_level_fields += ['meta_params']
+galsim.config.output.RegisterOutputType('DesTile', TileBuilder())
 
