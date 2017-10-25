@@ -22,3 +22,4 @@ output.file_name:
     - '$ccdname'
 
 
+input.catalog.file_name: exp_list_nersc
