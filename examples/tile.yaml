@@ -12,8 +12,17 @@ eval_variables:
         simage_path: { type: TileThisFileName, index_key: 'image_num' }
 
 input:
+
+    # Use analytic galaxies with size and flux parameters that match the distribution seen
+    # in the COSMOS galaxies.
+    cosmos_sampler:
+        min_r50: 0.15
+        max_r50: 1.0
+        min_flux: 2.5
+        max_flux: 100
+
     tile:  
-        source_list: DES0544-2249_r_fcut-flist-y3v02_test.dat
+        source_list: tile_inputs/DES0544-2249_r_fcut-flist-y3v02_test.dat
         coadd_file: /global/cscratch1/sd/maccrann/DES/meds/y3v02/DES0544-2249/sources-r/OPS/multiepoch/Y3A1/r2689/DES0544-2249/p01/coadd/DES0544-2249_r2689p01_r.fits.fz
 
     #power_spectrum:
@@ -55,16 +64,16 @@ image:
     world_pos:
         type: RADec
         ra:
-            type: Degrees
-            theta: { type: Random, min: 0., max: 10. }
+            type: Radians
+            theta: { type: Random, min: { type: TileRAMin}, max: {type : TileRAMax }}
             #theta: { type: Random, min: "$(@input.tile.get_min_ra())", max: "$(@input.tile.get_max_ra())" }
         dec:
-            type: Degrees
+            type: Radians
             theta:
                 type: RandomDistribution
                 function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
-                x_min: 10. #"$(@input.tile.get_min_dec())"
-                x_max: 10. #"$(@input.tile.get_max_dec())"
+                x_min: { type : TileDecMin } #"$(@input.tile.get_min_dec())"
+                x_max: { type : TileDecMax } #"$(@input.tile.get_max_dec())"
 
     wcs:
         # Go through the exp_list catalog and sequentially use each exposure once.
@@ -79,18 +88,27 @@ psf:
     type: Moffat
     beta: 2.5
     fwhm: 0.9 #{ type : Eval, key : fwhm_central, index_key : exp_num }
-    ellip: 0.01
+    #ellip: 0.01
 
-#gal:
-#    type: Exponential
-#    flux : { type : Catalog , col : flux }
-#    half_light_radius : { type : Catalog , col : size }
+gal:
+    type: Exponential
+    flux:
+        type: Eval
+        # Scale flux up by a factor of 250
+        str: "250.0 * cosmos_flux"
+        fcosmos_flux: { type: CosmosFlux }
+    half_light_radius:
+        type: CosmosR50
+#    shear:
+#        type: G1G2
+#        g1: 0.02
+#        g2: 0.00
 
-stamp:
-    type: Basic
-    skip:
-        type: OffChip
-        min_dist: 100
+#stamp:
+#    type: Basic
+#    skip:
+#        type: OffChip
+#        min_dist: 100
 
 output:
     type: DesTile
@@ -99,8 +117,8 @@ output:
     # Note: the FocalPlane output type adds another available index key, exp_num.  This can
     # be used as an index_key instead of the usual file_num, image_num, or obj_num.  You can
     # also access it in eval statements as just exp_num.
-    nexp: 1 #{ type: TileNExp }   #Number of exposures
-    nimages: 1 #{ type: TileNFiles }  #Total number of images
+    nexp: { type: TileNExp }   #Number of exposures
+    nimages: { type: TileNFiles }  #Total number of images
 
     dir: output
     file_name:

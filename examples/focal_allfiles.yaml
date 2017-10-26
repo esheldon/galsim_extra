@@ -21,5 +21,7 @@ output.file_name:
     - { type: Catalog, col: 1 }
     - '$ccdname'
 
-
 input.catalog.file_name: exp_list_nersc
+
+#couple of things to make testing faster
+image.nobjects.mean: 100

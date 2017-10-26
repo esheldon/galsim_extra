@@ -46,8 +46,13 @@ class TileInput(object):
                     self.unique_im_dirs.append(im_dir)
                 exp_num = self.unique_im_dirs.index(im_dir)
                 self.exp_nums.append(exp_num)
-                self.files.append(os.path.join(im_path,im_file))
+                self.files.append(im_path)
                 self.mag_zps.append(mag_zp)
+
+        print "files:"
+        print self.files
+        print "exp_nums:"
+        print self.exp_nums
 
         #Also read in coadd_file to get bounds
         coadd_header = galsim.FitsHeader(file_name = coadd_file)
@@ -65,10 +70,10 @@ class TileInput(object):
         corners.append(wcs.toWorld(im_pos4))
         ra_list = [p.ra.wrap(corners[0].ra) for p in corners]
         dec_list = [p.dec for p in corners]
-        self.minra = np.min(ra_list)
-        self.maxra = np.max(ra_list)
-        self.mindec = np.min(dec_list)
-        self.maxdec = np.max(dec_list)
+        self.minra = np.min(ra_list) / galsim.radians
+        self.maxra = np.max(ra_list) / galsim.radians
+        self.mindec = np.min(dec_list) / galsim.radians
+        self.maxdec = np.max(dec_list) / galsim.radians
 
     def get_nfile(self):
         """Return the number of files.
@@ -134,8 +139,8 @@ def TileDecMax(config, base, value_type):
     return tile.get_max_dec()
 
 galsim.config.RegisterInputType('tile', galsim.config.InputLoader(TileInput, file_scope=True))
-galsim.config.RegisterValueType('ThisExpNum', ThisExpNum, [int], input_type='tile')
 galsim.config.RegisterValueType('TileNFiles', TileNFiles, [int], input_type='tile')
+galsim.config.RegisterValueType('ThisExpNum', ThisExpNum, [int], input_type='tile')
 galsim.config.RegisterValueType('TileNExp', TileNExp, [int], input_type='tile')
 galsim.config.RegisterValueType('TileThisFileName', TileThisFileName, [str], input_type='tile')
 galsim.config.RegisterValueType('TileRAMin', TileRAMin, [float], input_type='tile')
@@ -200,6 +205,7 @@ class TileBuilder(OutputBuilder):
             base['eval_variables'] = {}
 
         #Generate psf parameters for each exposure from the meta_params
+        """
         if 'meta_params' in base:
             meta_param_list_dict = {}  #dict of meta_param lists
             for iexp in range(nexp):
@@ -212,6 +218,7 @@ class TileBuilder(OutputBuilder):
             #recovered from this list using exp_num
             base['eval_variables']['f%s'%(key)] = { 'type' : 'List',
                                                           'items' : meta_param_list_dict[key] }
+        """
 
         # Set the random numbers to repeat for the objects so we get the same objects in the field
         # each time.
@@ -240,17 +247,17 @@ class TileBuilder(OutputBuilder):
         # if appropriate.  And it writes each image to disk as it gets made rather than holding
         # the full exposure in memory before writing anything.  So copy over the current
         # config into a new dict and make appropriate adjustments to make it work.
-        #simple_config = {}
-        #simple_config.update(config)
-        #simple_config['nfiles'] = config['nchips']
-        #simple_config['type'] = 'Fits'
-        #base['output'] = simple_config
-        #if 'nproc' in base['image']:
-        #    simple_config['nproc'] = base['image']['nproc']
+        simple_config = {}
+        simple_config.update(config)
+        simple_config['nfiles'] = nimages
+        simple_config['type'] = 'Fits'
+        base['output'] = simple_config
+        if 'nproc' in base['image']:
+            simple_config['nproc'] = base['image']['nproc']
         #base['exp_num'] = base['file_num']
 #
-        #if 'nexp' not in galsim.config.output.output_ignore:
-        #    galsim.config.output.output_ignore += ['nexp', 'nchips']
+        if 'nexp' not in galsim.config.output.output_ignore:
+            galsim.config.output.output_ignore += ['nexp', 'nimages']
 
         galsim.config.BuildFiles(nimages, base, file_num, logger=logger)
 
