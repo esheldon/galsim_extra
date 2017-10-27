@@ -1,0 +1,141 @@
+# This example config file uses a number of the custom modules available in galsim_extra including
+#     DesTile output type
+#     MixedScene stamp type
+#     CosmosR50, CosmosFlux value types along with cosmos_sampler input type
+#     LogNormal value type
+#     OffChip value type
+modules:
+    - galsim_extra
+
+eval_variables:
+        srun: &run "001"
+        simage_path: { type: TileThisFileName, index_key: 'image_num' }
+
+input:
+
+    # Use analytic galaxies with size and flux parameters that match the distribution seen
+    # in the COSMOS galaxies.
+    cosmos_sampler:
+        min_r50: 0.15
+        max_r50: 1.0
+        min_flux: 2.5
+        max_flux: 100
+
+    tile:  
+        source_list: tile_sim/inputs/DES0544-2249_r_fcut-flist-y3v02_test.dat #on nersc
+        #source_list: tile_sim/inputs/DES0544-2249_r_fcut-flist-y3v02_test_local.dat #local 
+        coadd_file: /global/cscratch1/sd/maccrann/DES/meds/y3v02/DES0544-2249/sources-r/OPS/multiepoch/Y3A1/r2689/DES0544-2249/p01/coadd/DES0544-2249_r2689p01_r.fits.fz
+        #coadd_file: meds/y3v02/DES0544-2249/sources-r/OPS/multiepoch/Y3A1/r2689/DES0544-2249/p01/coadd/DES0544-2249_r2689p01_r.fits.fz
+
+    #power_spectrum:
+    #    index_key: exp_num
+    #    # Heymans et al, 2012 found L0 ~= 3 arcmin, given as 180 arcsec here.
+    #    e_power_function: '(k**2 + (1./180)**2)**(-11./6.)'
+    #    b_power_function: '@input.power_spectrum.e_power_function'
+    #    units: arcsec
+    #    grid_spacing: 10
+    #    ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
+    #    center: 0,0
+    #    variance: '$rms_e**2'  # rms_e is given in meta_params
+
+meta_params:
+    # This field has information *about* the PSF (or the exposure in general), which will be used
+    # by the psf field to generate the specific PSFs at the location of each galaxy.
+    # This is a custom field for use with the FocalPlane output type.
+    # Variable names here are arbitrary, and will be evaluated once at the start of each
+    # focal plane.  The values can be used by the psf field in eval statements.
+    psf_fwhm: { type: LogNormal, mean: 0.9, sigma: 0.1 }
+#    rms_e: 0.01
+
+image:
+    type: Scattered
+
+    noise:
+        type: Gaussian
+        variance: 1.
+
+    random_seed: 8675309
+
+    # The number of objects across the full focal plane.
+    nobjects: 10000
+
+    #could read this from the image headers, but let's set them explicitly for now
+    xsize: 2048
+    ysize: 4096
+
+    world_pos:
+        type: RADec
+        ra:
+            type: Radians
+            theta: { type: Random, min: { type: TileRAMin}, max: {type : TileRAMax }}
+            #theta: { type: Random, min: "$(@input.tile.get_min_ra())", max: "$(@input.tile.get_max_ra())" }
+        dec:
+            type: Radians
+            theta:
+                type: RandomDistribution
+                function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
+                x_min: { type : TileDecMin } #"$(@input.tile.get_min_dec())"
+                x_max: { type : TileDecMax } #"$(@input.tile.get_max_dec())"
+
+    wcs:
+        # Go through the exp_list catalog and sequentially use each exposure once.
+        type: Fits
+        file_name: '$image_path'
+
+# The PSF is coherent across the full field of view.
+# The size has a polynomial component where it gets larger near the edges to
+# simulate a defocus kind of optical feature.  There is also an atmospheric
+# part using a Gaussian process power spectrum model for the shape and size.
+psf:
+    type: Moffat
+    beta: 2.5
+    fwhm: '$psf_fwhm'
+    #ellip: 0.01
+    #random_seed: { type: Eval, str: '1234+ThisExpNum'}
+
+gal:
+    type: Exponential
+    flux:
+        type: Eval
+        # Scale flux up by a factor of 250
+        str: "250.0 * cosmos_flux"
+        fcosmos_flux: { type: CosmosFlux }
+    half_light_radius:
+        type: CosmosR50
+    shear:
+        type: G1G2
+        g1: 0.02
+        g2: 0.00
+
+stamp:
+    type: Basic
+    skip:
+        type: OffChip
+        min_dist: 100
+
+output:
+    type: DESTile
+    # The number of exposures to build
+    nexp: 1 #{ type: TileNExp }   #Number of exposures
+    nimages: 1 #{ type: TileNFiles }  #Total number of images
+
+    dir: output
+    file_name:
+        type: FormattedStr
+        format: "sim_%s.fits.fz"
+        items:
+        - { type: Eval, str: "os.path.splitext(os.path.basename(image_path))[0]" }
+
+    truth:
+        file_name :
+            type: FormattedStr
+            format: "truth_%s"
+            items:
+            - { type: Eval, str: "os.path.splitext(os.path.basename(image_path))[0]" }
+
+        columns:
+            num: obj_num
+            x: "$image_pos.x"
+            y: "$image_pos.y"
+            flux: gal.flux
+            psf_fwhm: psf.fwhm
