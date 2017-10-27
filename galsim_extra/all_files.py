@@ -43,21 +43,12 @@ class AllFiles(object):
     _takes_rng = False
 
     def __init__(self, dir, files):
-        glob_symbol="*"
-        if '*' not in files:
-            if "?" not in files:
-                raise ValueError("The files string must have a single * or a contiguous series of ? characters.")
-            else:
-                asterisk=False
-                #get indices of ?, and make sure they are consecutive
-                inds = [i for (i,c) in enumerate(files) if c=="?"] #this gets the indices
-                glob_symbol="?"*len(inds)
-                if glob_symbol not in files: #this checks they're contiguous
-                    raise ValueError("Only a contiguous series of ? characters is allowed")
 
-        if ('*' in dir) or ('?' in dir):
-            raise ValueError("The * or ? characters may not be in dir")
-        if files.count('*') > 1:
+        if '*' not in files:
+            raise ValueError("The files string must have a single * character.")
+        if '*' in dir:
+            raise ValueError("The * character may not be in dir")
+        if files.count('*') != 1:
             raise ValueError("Only a single * character is allowed in files")
 
         full_path = os.path.join(dir, files)
@@ -68,7 +59,7 @@ class AllFiles(object):
             if dir: msg += " in directory %s"%dir
             raise IOError(msg)
 
-        prefix, sep_, postfix = full_path.partition(glob_symbol)
+        prefix, sep_, postfix = full_path.partition('*')
         i1 = len(prefix)
         i2 = -len(postfix)
         if i2 == 0: i2 = None   # In case no postfix, -0 won't work.  But None does.
