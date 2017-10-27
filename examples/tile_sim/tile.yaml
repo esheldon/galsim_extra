@@ -116,8 +116,8 @@ stamp:
 output:
     type: DESTile
     # The number of exposures to build
-    nexp: 1 #{ type: TileNExp }   #Number of exposures
-    nimages: 1 #{ type: TileNFiles }  #Total number of images
+    nexp: { type: TileNExp }   #Number of exposures
+    nimages: { type: TileNFiles }  #Total number of images
 
     dir: output
     file_name:
