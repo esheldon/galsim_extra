@@ -5,15 +5,21 @@ import numpy as np
 from galsim.config.output import OutputBuilder
 
 class TileInput(object):
-    """A class for for inputting a DES tile.
+    """A class for for inputting DES tile information.
 
     It is connected to the following other value types:
 
-    TileNFiles          An integer value giving the number of files matched.
-    TileThisFileName    The current file name from this listing.  (Uses either the current index
-                    or can set index_key if desired.)
+    TileNFiles          An integer value giving the number of images in the tile.
+    TileNExp            An integer value givin the number of exposures in the tile.
+    TileThisFileName    The current image file name from this listing.  (Uses either the current index
+                        or can set index_key if desired.)
+    ThisExpNum          The current exposure number - an integer index, starting from zero, 
+                        recording the current exposure in the tile (not an official DES exposure
+                        number)
+    TileRAMin           Minimum ra, with which to simulate objects - this is inferred from the coadd file.
 
     @param source_list     The file containing a list of source exposures filenames and zero-points for the tile
+    @param coadd_file      Coadd image file - used for it's wcs....
     """
     # The normal way to tell GalSim what parameters are required and/or optional is
     # through some class attributes given here:
@@ -29,7 +35,7 @@ class TileInput(object):
     def __init__(self, source_list, coadd_file):
         #Read in the text file and produce lists of exposure number (here 
         #this is just and index, rather than some official thing). 
-        #rather than anything filename, and magnitude zeropoint. 
+        #filename, and magnitude zeropoint. 
         #Images from the same exposure are identified by being in the same 
         #directory.
         self.exp_nums=[]
@@ -148,8 +154,8 @@ galsim.config.RegisterValueType('TileRAMax', TileRAMax, [float], input_type='til
 galsim.config.RegisterValueType('TileDecMin', TileDecMin, [float], input_type='tile')
 galsim.config.RegisterValueType('TileDecMax', TileDecMax, [float], input_type='tile')
 
-class TileBuilder(OutputBuilder):
-    """Implements the FocalPlane custom output type.
+class DESTileBuilder(OutputBuilder):
+    """Implements the DESTile custom output type.
 
     This type models a full focal plane including multiple CCD images using coherent patterns
     for things like the PSF and sky level.
@@ -205,20 +211,22 @@ class TileBuilder(OutputBuilder):
             base['eval_variables'] = {}
 
         #Generate psf parameters for each exposure from the meta_params
-        """
+        rng = base['rng']
         if 'meta_params' in base:
             meta_param_list_dict = {}  #dict of meta_param lists
             for iexp in range(nexp):
+                base['rng'] = galsim.BaseDeviate(1234+iexp)
                 for key in base['meta_params']:
                     if key not in meta_param_list_dict:
                         meta_param_list_dict[key]=[]
                     param = galsim.config.ParseValue(base['meta_params'], key, base, float)[0]
                     meta_param_list_dict[key].append(param)
             #Now save to eval variables - the idea is the psf parameters for the current exposure can be
-            #recovered from this list using exp_num
-            base['eval_variables']['f%s'%(key)] = { 'type' : 'List',
-                                                          'items' : meta_param_list_dict[key] }
-        """
+            #recovered from this list using ThisExpNum
+            base['eval_variables']['f%s'%(key)] = meta_param_list_dict[key]
+        base['rng'] = rng
+        print base['eval_variables']
+        print("WARNING: meta_params evaluation not working - getting same values for each exposure")
 
         # Set the random numbers to repeat for the objects so we get the same objects in the field
         # each time.
@@ -268,32 +276,34 @@ class TileBuilder(OutputBuilder):
         # to avoid errors, but we won't write these.
         return [galsim.Image()] * nimages
 
-    def getFilename(self, config, base, logger):
-        """Get the file_name for the current file being worked on.
-
-        Note that the base class defines a default extension = '.fits'.
-        This can be overridden by subclasses by changing the default_ext property.
-
-        @param config           The configuration dict for the output type.
-        @param base             The base configuration dict.
-        @param ignore           A list of parameters that are allowed to be in config['output']
-                                that we can ignore here.  i.e. it won't be an error if these
-                                parameters are present.
-        @param logger           If given, a logger object to log progress.
-
-        @returns the filename to build.
-        """
-        # Typically, the filename will depend on the chip_num, but if this gets called before
-        # buildImages, then it won't be ready, so just check.
-        if 'eval_variables' not in base:
-            base['eval_variables'] = {}
-        #if 'ichip_num' not in base['eval_variables']:
-        #    base['eval_variables']['ichip_num'] = 0
-        #if 'iexp_num' not in base['eval_variables']:
-        #    base['eval_variables']['iexp_num'] = base['file_num']
-        #if 'exp_num' not in base:
-        #    base['exp_num'] = base['file_num']
-        return super(TileBuilder, self).getFilename(config, base, logger)
+    
+    #def getFilename(self, config, base, logger):
+    #    """Get the file_name for the current file being worked on.
+#
+    #    Note that the base class defines a default extension = '.fits'.
+    #    This can be overridden by subclasses by changing the default_ext property.
+#
+    #    @param config           The configuration dict for the output type.
+    #    @param base             The base configuration dict.
+    #    @param ignore           A list of parameters that are allowed to be in config['output']
+    #                            that we can ignore here.  i.e. it won't be an error if these
+    #                            parameters are present.
+    #    @param logger           If given, a logger object to log progress.
+#
+    #    @returns the filename to build.
+    #    """
+    #    # Typically, the filename will depend on the chip_num, but if this gets called before
+    #    # buildImages, then it won't be ready, so just check.
+    #    if 'eval_variables' not in base:
+    #        base['eval_variables'] = {}
+    #    #if 'ichip_num' not in base['eval_variables']:
+    #    #    base['eval_variables']['ichip_num'] = 0
+    #    #if 'iexp_num' not in base['eval_variables']:
+    #    #    base['eval_variables']['iexp_num'] = base['file_num']
+    #    #if 'exp_num' not in base:
+    #    #    base['exp_num'] = base['file_num']
+    #    return super(DESTileBuilder, self).getFilename(config, base, logger)
+    
 
     def writeFile(self, data, file_name, config, base, logger):
         """Write the data to a file.
@@ -331,5 +341,5 @@ class TileBuilder(OutputBuilder):
         pass
 
 galsim.config.process.top_level_fields += ['meta_params']
-galsim.config.output.RegisterOutputType('DesTile', TileBuilder())
+galsim.config.output.RegisterOutputType('DESTile', DESTileBuilder())
 
