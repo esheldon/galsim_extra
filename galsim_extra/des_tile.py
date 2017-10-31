@@ -1,6 +1,7 @@
 import galsim
 import os
 import numpy as np
+import copy
 
 from galsim.config.output import OutputBuilder
 
@@ -210,10 +211,13 @@ class DESTileBuilder(OutputBuilder):
         if 'eval_variables' not in base:
             base['eval_variables'] = {}
 
-        #Generate psf parameters for each exposure from the meta_params
-        rng = base['rng']
+        #Generate psf parameters for each exposure from the meta_params.
+        #Attempted to do this by generating a list of meta_params for each key.
+        #For each exposure, replacing base['meta_params'] with it's original 
+        #value means it is evaluated again.
         if 'meta_params' in base:
             meta_param_list_dict = {}  #dict of meta_param lists
+            meta_params_orig = copy.deepcopy(base['meta_params'])
             for iexp in range(nexp):
                 base['rng'] = galsim.BaseDeviate(1234+iexp)
                 for key in base['meta_params']:
@@ -221,12 +225,11 @@ class DESTileBuilder(OutputBuilder):
                         meta_param_list_dict[key]=[]
                     param = galsim.config.ParseValue(base['meta_params'], key, base, float)[0]
                     meta_param_list_dict[key].append(param)
+                base['meta_params'] = meta_params_orig
+
             #Now save to eval variables - the idea is the psf parameters for the current exposure can be
             #recovered from this list using ThisExpNum
             base['eval_variables']['f%s'%(key)] = meta_param_list_dict[key]
-        base['rng'] = rng
-        print base['eval_variables']
-        print("WARNING: meta_params evaluation not working - getting same values for each exposure")
 
         # Set the random numbers to repeat for the objects so we get the same objects in the field
         # each time.
