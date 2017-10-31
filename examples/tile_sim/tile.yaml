@@ -10,7 +10,7 @@ modules:
 eval_variables:
         srun: &run "001"
         simage_path: { type: TileThisFileName, index_key: 'image_num' }
-
+        iexp_num: { type: ThisExpNum, index_key: 'image_num' }
 input:
 
     # Use analytic galaxies with size and flux parameters that match the distribution seen
@@ -89,7 +89,7 @@ image:
 psf:
     type: Moffat
     beta: 2.5
-    fwhm: '$psf_fwhm'
+    fwhm: "$psf_fwhm"
     #ellip: 0.01
     #random_seed: { type: Eval, str: '1234+ThisExpNum'}
 
@@ -116,8 +116,8 @@ stamp:
 output:
     type: DESTile
     # The number of exposures to build
-    nexp: 1 #{ type: TileNExp }   #Number of exposures
-    nimages: 1 #{ type: TileNFiles }  #Total number of images
+    nexp: { type: TileNExp }   #Number of exposures
+    nimages: { type: TileNFiles }  #Total number of images
 
     dir: output
     file_name:
@@ -129,7 +129,7 @@ output:
     truth:
         file_name :
             type: FormattedStr
-            format: "truth_%s"
+            format: "truth_%s.dat"
             items:
             - { type: Eval, str: "os.path.splitext(os.path.basename(image_path))[0]" }
 
