@@ -2,6 +2,7 @@
 import galsim
 import os
 import numpy as np
+import copy
 
 from galsim.config.output import OutputBuilder
 
@@ -54,6 +55,10 @@ class FocalPlaneBuilder(OutputBuilder):
 
         @returns a list of the images built
         """
+        #logger.error('Starting buildImages')
+        #logger.error('file_num: %d'%base['file_num'])
+        #logger.error('image_num: %d',base['image_num'])
+        
         req = { 'nchips' : int, }
         opt = { 'nexp' : int, }
         ignore += [ 'file_name', 'dir' ]
@@ -143,12 +148,6 @@ class FocalPlaneBuilder(OutputBuilder):
                      }
         }
 
-        # Evaluate all the meta parameters and write them into the eval_variables dict.
-        if 'meta_params' in base:
-            for key in base['meta_params']:
-                param = galsim.config.ParseValue(base['meta_params'], key, base, float)[0]
-                base['eval_variables']['f' + key] = param
-
         # Set the random numbers to repeat for the objects so we get the same objects in the field
         # each time.
         rs = base['image']['random_seed']
@@ -159,7 +158,7 @@ class FocalPlaneBuilder(OutputBuilder):
                 {  # Used for most things.  Repeats for each chip.
                     'type' : 'Eval',
                     'str' : 'first_seed + obj_num % @image.nobjects',
-                    'ifirst_seed' : '$%d + file_num * @image.nobjects'%first
+                    'ifirst_seed' : '$%d + exp_num * @image.nobjects'%first
                 }
             ]
             # The second one is the original random_seed specification,  used for noise, since
@@ -171,6 +170,13 @@ class FocalPlaneBuilder(OutputBuilder):
                 base['image']['random_seed'].append(rs)
             if 'noise' in base['image']:
                 base['image']['noise']['rng_num'] = 1
+
+        # Evaluate all the meta parameters and write them into the eval_variables dict.
+        if 'meta_params' in base:
+            for key in base['meta_params']:
+                param = galsim.config.ParseValue(base['meta_params'], key, base, float)[0]
+                base['eval_variables']['f' + key] = param
+            galsim.config.RemoveCurrent(base['meta_params'])
 
         # We let GalSim do its normal BuildFiles thing now, which would run in parallel
         # if appropriate.  And it writes each image to disk as it gets made rather than holding
@@ -187,8 +193,19 @@ class FocalPlaneBuilder(OutputBuilder):
 
         if 'nexp' not in galsim.config.output.output_ignore:
             galsim.config.output.output_ignore += ['nexp', 'nchips']
-
-        galsim.config.BuildFiles(nchips, base, file_num, logger=logger)
+        #logger.error('before BuildFiles')
+        #logger.error('file_num: %d'%base['file_num'])
+        #logger.error('image_num: %d',base['image_num'])
+        #logger.error("exp_num: %d",base['exp_num'])
+        #logger.error("chip_num: %d",galsim.config.GetCurrentValue("eval_variables.ichip_num", base, int))
+ 
+        #We now call files with file_num=image_num. This is because as far as FocalPlane is concerned,
+        #file_num iterates for each exposure, rather than each image. However, BuildFiles as called 
+        #below doesn't know any of this, the file_num variable within BuildFiles iterates for every
+        #physical file that is build. So for BuildFiles, the correct file_num is image_num.
+        galsim.config.BuildFiles(nchips, base, image_num, logger=logger)
+        #Remove the following from base
+        del base['eval_variables']['ichip_num']
 
         # Go back to the original dict.
         base['output'] = config
@@ -218,11 +235,18 @@ class FocalPlaneBuilder(OutputBuilder):
             base['eval_variables'] = {}
         if 'ichip_num' not in base['eval_variables']:
             base['eval_variables']['ichip_num'] = 0
-        if 'iexp_num' not in base['eval_variables']:
+        if galsim.config.GetCurrentValue("eval_variables.ichip_num", base, int) == 0:  
+            galsim.config.RemoveCurrent(config)          
             base['eval_variables']['iexp_num'] = base['file_num']
-        if 'exp_num' not in base:
             base['exp_num'] = base['file_num']
-        return super(FocalPlaneBuilder, self).getFilename(config, base, logger)
+        #logger.error('in getFilename')
+        #logger.error('file_num: %d'%base['file_num'])
+        #logger.error('image_num: %d',base['image_num'])
+        #logger.error("exp_num: %d",base['exp_num'])
+        #logger.error("chip_num: %d",galsim.config.GetCurrentValue("eval_variables.ichip_num", base, int))
+        name = super(FocalPlaneBuilder, self).getFilename(config, base, logger)
+        #logger.error("name: %s",name)
+        return name
 
     def writeFile(self, data, file_name, config, base, logger):
         """Write the data to a file.

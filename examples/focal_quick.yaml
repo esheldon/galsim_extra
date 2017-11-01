@@ -157,7 +157,7 @@ star:
 psf:
     type: Moffat
     beta: 2.5
-    fwhm: '$fwhm_central + fwhm_a * (focal_r/focal_rmax)**2'
+    fwhm: '$fwhm_central' # + fwhm_a * (focal_r/focal_rmax)**2'
     ellip:
         type: PowerSpectrumShear
     magnify:
@@ -243,7 +243,6 @@ image:
                 function: "math.cos(x)"  # Uniform on the sky means P(delta) ~ cos(delta)
                 x_min: "$fov_mindec.rad()"
                 x_max: "$fov_maxdec.rad()"
-
     wcs:
         # Go through the exp_list catalog and sequentially use each exposure once.
         type: Fits
@@ -316,7 +315,7 @@ output:
     truth:
         file_name :
             type: FormattedStr
-            format: "truth_%s_%02d.fits"
+            format: "truth_%s_%02d.dat"
             items:
             - { type: Catalog, col: 1 }
             - "$chip_num + 1"
