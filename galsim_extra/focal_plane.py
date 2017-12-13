@@ -47,6 +47,18 @@ class FocalPlaneBuilder(OutputBuilder):
             if 'noise' in base['image']:
                 base['image']['noise']['rng_num'] = 1
 
+            # We also add a third one that will repeat for all exposures.  So could be used
+            # for making galaxy properties the same in all exposures in a multi-exposure context.
+            # Note: this would only work correctly if nobjects is constant.
+            base['image']['random_seed'].append(
+                {
+                    'type' : 'Eval',
+                    'str' : 'first_seed + obj_num % nobjects',
+                    'ifirst_seed' : first,
+                    'inobjects' : { 'type' : 'Current', 'key' : 'image.nobjects' }
+                }
+            )
+
         # Sometimes this will be called prior to ProcessInput being called, so if there is an
         # error, try loading the inputs and then try again.
         try:
