@@ -54,7 +54,7 @@ class FocalPlaneBuilder(OutputBuilder):
                 {
                     'type' : 'Eval',
                     'str' : 'first_seed + obj_num % nobjects',
-                    'ifirst_seed' : first,
+                    'ifirst_seed' : first + 314159,
                     'inobjects' : { 'type' : 'Current', 'key' : 'image.nobjects' }
                 }
             )
