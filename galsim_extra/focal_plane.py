@@ -15,37 +15,73 @@ class FocalPlaneBuilder(OutputBuilder):
     The wcs is taken from a reference wcs (e.g. from a set of Fits files), but can reset the
     pointing position to a different location on the sky.
     """
-    def _setup(self, config, base, file_num):
-        """Do some setup that needs to happen before doing most other calculations.
-        Also returns nexp, nchips for convenience.
-        """
+    def setup(self, config, base, file_num, logger):
+        logger.debug('Start FocalPlaneBuilder setup file_num=%d', file_num)
         # Make sure exp_num is considered a valid index_key.
         if 'exp_num' not in galsim.config.process.valid_index_keys:
-            galsim.config.process.valid_index_keys += ['exp_num']
+            galsim.config.valid_index_keys += ['exp_num', 'chip_num']
+            galsim.config.eval_base_variables += ['exp_num', 'chip_num', 'exp_start_obj_num']
+
+        if 'nexp' in config:
+            # Sometimes this will be called prior to ProcessInput being called, so if there is an
+            # error, try loading the inputs and then try again.
+            try:
+                nexp = galsim.config.ParseValue(config, 'nexp', base, int)[0]
+            except:
+                galsim.config.ProcessInput(base, safe_only=True)
+                nexp = galsim.config.ParseValue(config, 'nexp', base, int)[0]
+        else:
+            nexp = 1
+
+        # We'll be setting the random number seed to repeat for each chip, which requires
+        # querying the number of objects in the exposure.  This however leads to a logical
+        # infinite loop if the number of objects is a random variate.  So to make this work,
+        # we first get the number of objects in each exposure using a well-defined rng, and
+        # save those values to a list, which is then fully deterministic for all other uses.
+        if 'nobjects' not in base['image']:
+            raise ValueError("image.nobjects is required for output type 'FocalPlane'")
+        nobj = base['image']['nobjects']
+        if not isinstance(nobj, dict) or not nobj.get('_setup_as_list', False):
+            seed = galsim.config.ParseValue(base['image'], 'random_seed', base, int)[0]
+            base['exp_num_rng'] = base['rng'] = galsim.BaseDeviate(seed)
+            nobj_list = []
+            for exp_num in range(nexp):
+                base['exp_num'] = exp_num
+                nobj = galsim.config.ParseValue(base['image'], 'nobjects', base, int)[0]
+                nobj_list.append(nobj)
+            base['image']['nobjects'] = {
+                'type' : 'List',
+                'items' : nobj_list,
+                'index_key' : 'exp_num',
+                '_setup_as_list' : True,
+            }
+        logger.debug('nobjects = %s', galsim.config.CleanConfig(base['image']['nobjects']))
 
         # Set the random numbers to repeat for the objects so we get the same objects in the field
         # each time.
         rs = base['image']['random_seed']
         if not isinstance(rs,list):
             first = galsim.config.ParseValue(base['image'], 'random_seed', base, int)[0]
-            base['first_seed'] = first
-            base['image']['random_seed'] = [
-                {  # Used for most things.  Repeats for each chip.
-                    'type' : 'Eval',
-                    'str' : 'first_seed + exp_num * nobjects + obj_num % nobjects',
-                    'ifirst_seed' : first,
-                    'inobjects' : { 'type' : 'Current', 'key' : 'image.nobjects' }
-                }
-            ]
-            # The second one is the original random_seed specification,  used for noise, since
-            # that should be different on each chip.
+            base['image']['random_seed'] = []
+            # The first one is the original random_seed specification, used for noise, since
+            # that should be different on each chip, and probably most things in input, output,
+            # or image.
             if isinstance(rs,int):
                 base['image']['random_seed'].append(
                     { 'type' : 'Sequence', 'index_key' : 'obj_num', 'first' : first } )
             else:
                 base['image']['random_seed'].append(rs)
-            if 'noise' in base['image']:
-                base['image']['noise']['rng_num'] = 1
+
+            # The second one is used for the galaxies and repeats through the same set of seed
+            # values for each chip in an expousre.
+            base['image']['random_seed'].append(
+                {
+                    'type' : 'Eval',
+                    'str' : 'first + exp_start_obj_num + (obj_num - exp_start_obj_num) % nobjects',
+                    'ifirst' : first,
+                    'inobjects' : { 'type' : 'Current', 'key' : 'image.nobjects' }
+                }
+            )
 
             # We also add a third one that will repeat for all exposures.  So could be used
             # for making galaxy properties the same in all exposures in a multi-exposure context.
@@ -53,49 +89,42 @@ class FocalPlaneBuilder(OutputBuilder):
             base['image']['random_seed'].append(
                 {
                     'type' : 'Eval',
-                    'str' : 'first_seed + obj_num % nobjects',
-                    'ifirst_seed' : first + 314159,
+                    'str' : 'first + (obj_num - exp_start_obj_num) % nobjects',
+                    'ifirst' : first,
                     'inobjects' : { 'type' : 'Current', 'key' : 'image.nobjects' }
                 }
             )
 
-        # Sometimes this will be called prior to ProcessInput being called, so if there is an
-        # error, try loading the inputs and then try again.
+            if 'gal' in base:
+                base['gal']['rng_num'] = 1
+            if 'stamp' in base:
+                base['stamp']['rng_num'] = 1
+            if 'image_pos' in base['image']:
+                base['image']['image_pos']['rng_num'] = 1
+            if 'world_pos' in base['image']:
+                base['image']['world_pos']['rng_num'] = 1
+
+        logger.debug('random_seed = %s', galsim.config.CleanConfig(base['image']['random_seed']))
+
+        # Do this after the above just in case nchips has a random component.
         try:
-            if 'nexp' in config:
-                nexp = galsim.config.ParseValue(config, 'nexp', base, int)[0]
-            else:
-                nexp = 1
             nchips = galsim.config.ParseValue(config, 'nchips', base, int)[0]
         except:
             galsim.config.ProcessInput(base, safe_only=True)
-            if 'nexp' in config:
-                nexp = galsim.config.ParseValue(config, 'nexp', base, int)[0]
-            else:
-                nexp = 1
             nchips = galsim.config.ParseValue(config, 'nchips', base, int)[0]
 
         # Make sure that exp_num and chip_num are setup properly in the right places.
         exp_num = file_num // nchips
         chip_num = file_num % nchips
+        base['exp_num'] = exp_num
         base['chip_num'] = chip_num
-        if 'eval_variables' not in base:
-            base['eval_variables'] = {}
-        base['eval_variables']['ichip_num'] = chip_num
-        base['eval_variables']['iexp_num'] = exp_num
+        nobjects = galsim.config.ParseValue(base['image'], 'nobjects', base, int)[0]
+        base['exp_start_obj_num'] = base['start_obj_num'] - chip_num * nobjects
+        logger.debug('file_num, nexp, nchips = %d, %d, %d', file_num, nexp, nchips)
+        logger.debug('exp_num, chip_num = %d, %d', exp_num, chip_num)
 
-        # Make sure there is an appropriate RNG for exp_num.
-        if exp_num != base.get('exp_num',None):
-            base['exp_num'] = exp_num
-            # Can't use the normal seed, since that depends on nobjects, which may in turn
-            # require an exp_num_rng to already be set.  Use a different, arbitrary sequence.
-            seed = base['first_seed'] + 314159 + exp_num * 12345
-            rng = galsim.BaseDeviate(seed)
-            base['exp_num_seed'] = seed
-            base['exp_num_rng'] = rng
-            base['exp_num_rngs'] = [rng, rng]
-
-        return nexp, nchips
+        # This sets up the RNG seeds.
+        OutputBuilder.setup(self, config, base, file_num, logger)
 
     def getNFiles(self, config, base):
         """Returns the number of files to be built.
@@ -109,26 +138,9 @@ class FocalPlaneBuilder(OutputBuilder):
 
         @returns the number of "files" to build.
         """
-        nexp, nchips = self._setup(config, base, 0)
+        nexp = galsim.config.ParseValue(config, 'nexp', base, int)[0]
+        nchips = galsim.config.ParseValue(config, 'nchips', base, int)[0]
         return nexp * nchips
-
-    def getNObjPerImage(self, config, base, file_num, image_num):
-        """
-        Get the number of objects that will be made for each image built as part of the file
-        file_num, which starts at image number image_num, based on the information in the config
-        dict.
-
-        @param config           The configuration dict.
-        @param base             The base configuration dict.
-        @param file_num         The current file number.
-        @param image_num        The current image number (the first one for this file).
-
-        @returns a list of the number of objects in each image [ nobj0, nobj1, nobj2, ... ]
-        """
-        # This just sets things up if necessary.
-        self._setup(config, base, file_num)
-        nobj = OutputBuilder.getNObjPerImage(self, config, base, file_num, image_num)
-        return nobj
 
     def buildImages(self, config, base, file_num, image_num, obj_num, ignore, logger):
         """Build the images
@@ -148,16 +160,15 @@ class FocalPlaneBuilder(OutputBuilder):
         logger.info('file_num: %d'%base['file_num'])
         logger.info('image_num: %d',base['image_num'])
 
-        nexp, nchips = self._setup(config, base, file_num)
         exp_num = base['exp_num']
         chip_num = base['chip_num']
-        logger.debug("nexp, nchips, expnum, chipnum = %d, %d, %d, %d",nexp,nchips,exp_num,chip_num)
-
-        # Just check there aren't other invalid parameters in the dict.
         req = { 'nchips' : int, }
         opt = { 'nexp' : int, }
         ignore += [ 'file_name', 'dir' ]
-        galsim.config.CheckAllParams(config, req=req, opt=opt, ignore=ignore)
+        kwargs = galsim.config.GetAllParams(config, base, req=req, opt=opt, ignore=ignore)[0]
+        nexp = kwargs.get('nexp',1)
+        nchips = kwargs['nchips']
+        logger.debug("nexp, nchips, expnum, chipnum = %d, %d, %d, %d",nexp,nchips,exp_num,chip_num)
 
         # Additional setup only for the first time we get to this particular exp_num.
         if base.get('_focalplane_expnum_setup',None) != exp_num:
@@ -246,36 +257,6 @@ class FocalPlaneBuilder(OutputBuilder):
         images = OutputBuilder.buildImages(self, config, base, file_num, image_num, obj_num,
                                            ignore, logger)
         return images
-
-    def getFilename(self, config, base, logger):
-        """Get the file_name for the current file being worked on.
-
-        Note that the base class defines a default extension = '.fits'.
-        This can be overridden by subclasses by changing the default_ext property.
-
-        @param config           The configuration dict for the output type.
-        @param base             The base configuration dict.
-        @param ignore           A list of parameters that are allowed to be in config['output']
-                                that we can ignore here.  i.e. it won't be an error if these
-                                parameters are present.
-        @param logger           If given, a logger object to log progress.
-
-        @returns the filename to build.
-        """
-        logger.debug("Get filename for file_num = %s",base['file_num'])
-        self._setup(config, base, base['file_num'])
-        name = OutputBuilder.getFilename(self, config, base, logger)
-        logger.debug("name = %s",name)
-        return name
-
-
-def clean_config(config):
-    if isinstance(config, dict):
-        return { k : clean_config(config[k]) for k in config if k[0] != '_' }
-    elif isinstance(config, list):
-        return [ clean_config(item) for item in config ]
-    else:
-        return config
 
 galsim.config.process.top_level_fields += ['meta_params']
 galsim.config.output.RegisterOutputType('FocalPlane', FocalPlaneBuilder())
