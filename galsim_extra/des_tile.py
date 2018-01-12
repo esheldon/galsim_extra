@@ -56,10 +56,10 @@ class TileInput(object):
                 self.files.append(im_path)
                 self.mag_zps.append(mag_zp)
 
-        print "files:"
-        print self.files
-        print "exp_nums:"
-        print self.exp_nums
+        #print("files:")
+        #print(self.files)
+        #print("exp_nums:")
+        #print(self.exp_nums)
 
         #Also read in coadd_file to get bounds
         coadd_header = galsim.FitsHeader(file_name = coadd_file)
