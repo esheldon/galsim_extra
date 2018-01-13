@@ -19,7 +19,7 @@ def test_truth():
     n_per_obj=1
 
     config = {
-        'modules' : ["galsim_extra",],
+        'modules' : ["galsim_extra","des"],
 
         'gal' : { 'type' : 'Sersic',
                   'n' : 1.3,
@@ -31,7 +31,7 @@ def test_truth():
         'psf' : { 'type' : 'Moffat', 'beta' : 2.9, 'fwhm' : 0.7 },
         'image' : { 'pixel_scale' : pixel_scale,
                     'size' : stamp_size, 'random_seed' : seed,
-                    'nproc':-1 },
+                    'nproc': 4 },
         'output' : { 'type' : 'MEDS',
                      'nobjects' : nobj,
                      'nstamps_per_object' : n_per_obj,

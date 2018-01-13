@@ -26,6 +26,22 @@ class CosmosSampler(object):
         self._load_data()
         self._make_kde()
 
+    def resample(self, size, rand):
+        # Equivalent to this line:
+        #    return self.kde.resample(size=size)
+        # except we do this using a numpy RandomState, rather than using the global
+        # numpy.random state.
+        # The following is basically copied from the scipy code, but patching in the use
+        # of the RandomState where appropriate.
+        if size is None:
+            size = self.kde.n
+
+        norm = numpy.transpose(rand.multivariate_normal(numpy.zeros((self.kde.d,), float),
+                               self.kde.covariance, size=size))
+        indices = rand.randint(0, self.kde.n, size=size)
+        means = self.kde.dataset[:, indices]
+        return means + norm
+
     def sample(self, rng, size=None):
         """
         get [r50, flux] or [:, r50_flux]
@@ -43,9 +59,9 @@ class CosmosSampler(object):
 
         ngood=0
         nleft=data.shape[0]
-        numpy.random.seed(rng.raw())
+        rand = numpy.random.RandomState(rng.raw())
         while nleft > 0:
-            r=self.kde.resample(size=nleft).T
+            r = self.resample(nleft, rand).T
 
             w,=numpy.where( (r[:,0] > r50min) &
                             (r[:,0] < r50max) &
