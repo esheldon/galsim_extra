@@ -33,7 +33,7 @@ def test_nproc():
     """
     Run BASE_CONFIG with nfiles=2 and output.nproc=-1 to test multiprocessing
     """
-    config = BASE_CONFIG
+    config = galsim.config.CopyConfig(BASE_CONFIG)
     config['output']['nfiles']=2
     config['output']['nproc']=-1
 
@@ -57,7 +57,7 @@ def test_truth():
     n_per_obj=1
     nfiles = 2
 
-    config = BASE_CONFIG
+    config = galsim.config.CopyConfig(BASE_CONFIG)
     #make a copy of the dict to run first
     config_0 = copy.deepcopy(config)
     import logging
