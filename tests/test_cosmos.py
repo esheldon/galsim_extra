@@ -5,6 +5,43 @@ import numpy as np
 import os, sys
 import copy
 
+BASE_CONFIG={
+        'modules' : ["galsim_extra","des"],
+
+        'gal' : { 'type' : 'Sersic',
+                  'n' : 1.3,
+                  'half_light_radius' : {'type': 'CosmosR50'},
+                  'flux' : {'type' : 'CosmosFlux'},
+                  'shear' : { 'type' : 'G1G2', 'g1' : 0.1, 'g2' : 0. },
+                },
+
+        'psf' : { 'type' : 'Moffat', 'beta' : 2.9, 'fwhm' : 0.7 },
+        'image' : { 'pixel_scale' : 0.26,
+                    'size' : 48, 'random_seed' : 1234},
+        'output' : { 'type' : 'MEDS',
+                     'nobjects' : 100,
+                     'nfiles' : 1,
+                     'nstamps_per_object' : 1,
+                     'file_name' : "meds_%d.fits"%0,
+                     'truth': {'file_name' : "truth_%d.dat"%0,
+                               'columns' : {'num': 'obj_num', 'hlr':'$(@gal.half_light_radius)'}}
+                   },
+        'input' : { 'cosmos_sampler' : { 'min_r50' : 0.15, 'max_r50' : 1., 'min_flux' : 2.5, 'max_flux' : 100 }}
+    }
+
+def test_nproc():
+    """
+    Run BASE_CONFIG with nfiles=2 and output.nproc=-1 to test multiprocessing
+    """
+    config = BASE_CONFIG
+    config['output']['nfiles']=2
+    config['output']['nproc']=-1
+
+    import logging
+    logging.basicConfig(format="%(message)s", level=logging.WARN, stream=sys.stdout)
+    logger = logging.getLogger('test_cosmos_truth')
+    galsim.config.Process(config, logger=logger)
+
 def test_truth():
     """This test checks whether running the same config twice produces the same cosmos 
     sampler properties
@@ -17,30 +54,9 @@ def test_truth():
     stamp_size=32
     nobj=100
     n_per_obj=1
+    nfiles = 2
 
-    config = {
-        'modules' : ["galsim_extra","des"],
-
-        'gal' : { 'type' : 'Sersic',
-                  'n' : 1.3,
-                  'half_light_radius' : {'type': 'CosmosR50'},
-                  'flux' : {'type' : 'CosmosFlux'},
-                  'shear' : { 'type' : 'G1G2', 'g1' : g1, 'g2' : g2 },
-                },
-
-        'psf' : { 'type' : 'Moffat', 'beta' : 2.9, 'fwhm' : 0.7 },
-        'image' : { 'pixel_scale' : pixel_scale,
-                    'size' : stamp_size, 'random_seed' : seed,
-                    'nproc': 4 },
-        'output' : { 'type' : 'MEDS',
-                     'nobjects' : nobj,
-                     'nstamps_per_object' : n_per_obj,
-                     'file_name' : "meds_%d.fits"%i_run,
-                     'truth': {'file_name' : "truth_%d.dat"%i_run,
-                               'columns' : {'num': 'obj_num', 'hlr':'$(@gal.half_light_radius)'}}
-                   },
-        'input' : { 'cosmos_sampler' : { 'min_r50' : 0.15, 'max_r50' : 1., 'min_flux' : 2.5, 'max_flux' : 100 }}
-    }
+    config = BASE_CONFIG
     #make a copy of the dict to run first
     config_0 = copy.deepcopy(config)
     import logging
@@ -60,4 +76,6 @@ def test_truth():
 
 
 if __name__ == "__main__":
+    test_nproc()
     test_truth()
+
