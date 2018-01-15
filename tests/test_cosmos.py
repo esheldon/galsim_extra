@@ -40,6 +40,7 @@ def test_nproc():
     import logging
     logging.basicConfig(format="%(message)s", level=logging.WARN, stream=sys.stdout)
     logger = logging.getLogger('test_cosmos_truth')
+    #logger.setLevel(logging.DEBUG)
     galsim.config.Process(config, logger=logger)
 
 def test_truth():

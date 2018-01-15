@@ -8,10 +8,12 @@ class CosmosSampler(object):
                    'min_flux' : float, 'max_flux': float,
                    'kde_factor' : float }
     _single_params = []
-    _takes_rng = False
+    _takes_rng = True # It doesn't actually need an rng, but this marks it as "unsafe"
+                      # to the ProcessInput function, which avoids some multiprocessing
+                      # pickle problems.
 
     def __init__(self, min_r50=0.05, max_r50=2.0, min_flux=0.5, max_flux=100,
-                 kde_factor=0.01):
+                 kde_factor=0.01, rng=None):
         # Make sure required dependencies are checked right away, so the user gets timely
         # feedback of what this code requires.
         import scipy
