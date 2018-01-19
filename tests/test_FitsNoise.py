@@ -6,13 +6,9 @@ import numpy as np
 
 class TestFitsNoise(unittest.TestCase):
     def setUp(self):
-        #change this to test on a different machine
-        self.fitsdir = "/Users/adamwheeler/Dropbox/y1_test"
-        self.fitsfile = "DECam_00241238_01.fits"
-        self.bkgfile = "DECam_00241238_01_bkg.fits"
-
-        self.hdus = fits.open(self.fitsdir + '/' + self.fitsfile)
-        self.hdus.verify('silentfix')
+        self.fitsdir = "test_desdata"
+        self.fitsfile = "DECam_00241238_01.fits.fz"
+        self.bkgfile = "DECam_00241238_01_bkg.fits.fz"
 
         #basic config file for test cases to build off of
         self.config = {}
@@ -30,9 +26,6 @@ class TestFitsNoise(unittest.TestCase):
         self.rng = galsim.BaseDeviate(124)
 
 
-    def tearDown(self):
-        self.hdus.close()
-
     def assertImEqual(self, im1, im2):
         np.testing.assert_array_almost_equal(im1.array, im2.array, decimal=2)
 
@@ -41,11 +34,11 @@ class TestFitsNoise(unittest.TestCase):
             {'type': 'FitsNoise',
              'dir': self.fitsdir,
              'file_name': self.fitsfile,
-             'hdu': 2}
+             'hdu': 3}
         image = galsim.config.BuildImage(self.config)
 
-        varmap = 1.0/self.hdus[2].data
-        varimage = galsim.image.Image(varmap)
+        varimage = galsim.fits.read(self.fitsfile, dir=self.fitsdir, hdu=3)
+        varimage.invertSelf()
         noise = galsim.noise.VariableGaussianNoise(self.rng, varimage)
         self.image.addNoise(noise)
         self.assertImEqual(image, self.image)
@@ -55,19 +48,17 @@ class TestFitsNoise(unittest.TestCase):
             {'type': 'FitsNoise',
              'dir': self.fitsdir,
              'file_name': self.fitsfile,
-             'hdu': 2,
+             'hdu': 3,
              'bkg_file_name': self.bkgfile,
-             'bkg_hdu': 0}
+             'bkg_hdu': 1}
         image = galsim.config.BuildImage(self.config)
 
-        varmap = 1.0/self.hdus[2].data
-        varimage = galsim.image.Image(varmap)
+        varimage = galsim.fits.read(self.fitsfile, dir=self.fitsdir, hdu=3)
+        varimage.invertSelf()
         noise = galsim.noise.VariableGaussianNoise(self.rng, varimage)
         self.image.addNoise(noise)
 
-        hdus = fits.open(self.fitsdir + '/' + self.bkgfile)
-        hdus.verify('silentfix')
-        self.image += galsim.image.Image(hdus[0].data)
+        self.image += galsim.fits.read(self.bkgfile, dir=self.fitsdir)
 
         self.assertImEqual(image, self.image)
 

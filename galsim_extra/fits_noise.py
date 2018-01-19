@@ -1,5 +1,4 @@
 import galsim
-from astropy.io import fits
 
 class FitsNoiseBuilder(galsim.config.NoiseBuilder):
     req = {'hdu': int, 'file_name': str}
@@ -23,32 +22,16 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
         if 'bkg_hdu' in params:
             filename = params.get('bkg_file_name', params['file_name'])
             directory = params.get('bkg_dir', params.get('dir', '.'))
-            path = directory + '/' + filename
-
-            hdus = fits.open(path)
-            hdu = hdus[params['bkg_hdu']]
-            hdu.verify('silentfix')
-
-            im += galsim.image.Image(hdu.data)
-
-            hdus.close()
+            im += galsim.fits.read(filename, dir=directory, hdu=params['bkg_hdu'])
 
 
     def getNoiseVariance(self, config, base):
         params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)        
 
-        filename = params.get('dir', '.') + '/' + params['file_name']
-
-        hdus = fits.open(filename)
-        hdu = hdus[params['hdu']]
-        hdu.verify('silentfix')
-
-        varmap = 1.0/hdu.data
-
-        hdus.close()
-
-        #wcs = base['wcs'] #does this need to be interpretted by galsim somehow?
-        return galsim.image.Image(varmap, wcs=None)
+        filename = params['file_name']
+        varimage = galsim.fits.read(filename, dir=params.get('dir',None), hdu=params['hdu'])
+        varimage.invertSelf()
+        return varimage
 
 
 galsim.config.RegisterNoiseType('FitsNoise', FitsNoiseBuilder())
