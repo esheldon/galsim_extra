@@ -8,7 +8,9 @@ class CosmosSampler(object):
                    'min_flux' : float, 'max_flux': float,
                    'kde_factor' : float }
     _single_params = []
-    _takes_rng = True
+    _takes_rng = True # It doesn't actually need an rng, but this marks it as "unsafe"
+                      # to the ProcessInput function, which avoids some multiprocessing
+                      # pickle problems.
 
     def __init__(self, min_r50=0.05, max_r50=2.0, min_flux=0.5, max_flux=100,
                  kde_factor=0.01, rng=None):
@@ -25,9 +27,24 @@ class CosmosSampler(object):
 
         self._load_data()
         self._make_kde()
-        self._rng = galsim.BaseDeviate(rng)
 
-    def sample(self, size=None):
+    def resample(self, size, rand):
+        # Equivalent to this line:
+        #    return self.kde.resample(size=size)
+        # except we do this using a numpy RandomState, rather than using the global
+        # numpy.random state.
+        # The following is basically copied from the scipy code, but patching in the use
+        # of the RandomState where appropriate.
+        if size is None:
+            size = self.kde.n
+
+        norm = numpy.transpose(rand.multivariate_normal(numpy.zeros((self.kde.d,), float),
+                               self.kde.covariance, size=size))
+        indices = rand.randint(0, self.kde.n, size=size)
+        means = self.kde.dataset[:, indices]
+        return means + norm
+
+    def sample(self, rng, size=None):
         """
         get [r50, flux] or [:, r50_flux]
         """
@@ -44,9 +61,9 @@ class CosmosSampler(object):
 
         ngood=0
         nleft=data.shape[0]
-        numpy.random.seed(self._rng.raw())
+        rand = numpy.random.RandomState(rng.raw())
         while nleft > 0:
-            r=self.kde.resample(size=nleft).T
+            r = self.resample(nleft, rand).T
 
             w,=numpy.where( (r[:,0] > r50min) &
                             (r[:,0] < r50max) &
@@ -103,32 +120,19 @@ class CosmosSampler(object):
         )
 
 def CosmosR50Flux(config, base, name):
-    # Get the current values of index_key and rng in the base dict.
-    orig_index_key = base.get('index_key',None)
-    orig_rng = base.get('rng',None)
 
-    # This may change the values of base['index_key'] and base['rng']
-    try:
-        index, index_key = galsim.config.GetIndex(config, base)
-    except AttributeError:
-        # The old syntax prior to GalSim v1.5
-        index, index_key = galsim.config.value._get_index(config, base, False)
+    index, index_key = galsim.config.GetIndex(config, base)
+    rng = galsim.config.GetRNG(config, base)
 
     if base.get('_cosmos_sampler_index',None) != index:
         cosmos_sampler = galsim.config.GetInputObj('cosmos_sampler', config, base, name)
-        r50, flux = cosmos_sampler.sample()
+        r50, flux = cosmos_sampler.sample(rng)
         base['_cosmos_sampler_r50'] = r50
         base['_cosmos_sampler_flux'] = flux
         base['_cosmos_sampler_index'] = index
     else:
         r50 = base['_cosmos_sampler_r50']
         flux = base['_cosmos_sampler_flux']
-
-    # Reset these values back if necessary.
-    if orig_index_key is not None:
-        base['index_key'] = orig_index_key
-    if orig_rng is not None:
-        base['rng'] = orig_rng
 
     return float(r50), float(flux)
 

@@ -6,8 +6,18 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
     def setup(self, config, base, xsize, ysize, ignore, logger):
         if 'objects' not in config:
             raise AttributeError('objets field is required for MixedScene stamp type')
-
         objects = config['objects']
+
+        # Propagate any stamp rng_num or index_key into the various object fields:
+        objects.pop('rng_num', None)  # Also remove them from here if necessary.
+        objects.pop('index_key', None)
+        if not config.get('_propagated_rng_index', False):
+            config['_propagated_rng_index'] = True
+            rng_num = config.get('rng_num', None)
+            index_key = config.get('index_key', None)
+            for key in objects.keys():
+                galsim.config.PropagateIndexKeyRNGNum(base[key], index_key, rng_num)
+
         rng = galsim.config.GetRNG(config, base)
         ud = galsim.UniformDeviate(rng)
         p = ud()  # A random number between 0 and 1.
