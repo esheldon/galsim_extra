@@ -1,4 +1,5 @@
 import galsim
+import numpy as np
 
 class FitsNoiseBuilder(galsim.config.NoiseBuilder):
     req = {'hdu': int, 'file_name': str}
@@ -13,22 +14,23 @@ class FitsNoiseBuilder(galsim.config.NoiseBuilder):
         @param current_var      The current noise variance present in the image already [default: 0]
         @param logger           If given, a logger object to log progress.
         """
-        var = self.getNoiseVariance(config, base)
+        var = self.getNoiseVariance(config, base, logger)
         noise = galsim.noise.VariableGaussianNoise(rng, var)
         im.addNoise(noise)
-        
+
         #add background if applicable
         params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)
         if 'bkg_hdu' in params:
             filename = params.get('bkg_file_name', params['file_name'])
             directory = params.get('bkg_dir', params.get('dir', '.'))
             im += galsim.fits.read(filename, dir=directory, hdu=params['bkg_hdu'])
+        return var
 
-
-    def getNoiseVariance(self, config, base):
+    def getNoiseVariance(self, config, base, logger):
         params, safe = galsim.config.GetAllParams(config, base, req=self.req, opt=self.opt)        
 
         filename = params['file_name']
+        logger.info("Generating noise from hdu %d of file %s"%(params["hdu"], filename))
         varimage = galsim.fits.read(filename, dir=params.get('dir',None), hdu=params['hdu'])
         varimage.invertSelf()
         return varimage
