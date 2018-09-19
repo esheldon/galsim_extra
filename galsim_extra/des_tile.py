@@ -56,8 +56,8 @@ class TileInput(object):
                 self.files.append(im_path)
                 self.mag_zps.append(mag_zp)
 
-        print("files:")
-        print(self.files)
+        #print("files:")
+        #print(self.files)
         #print("exp_nums:")
         #print(self.exp_nums)
 
@@ -178,6 +178,101 @@ class DESTileBuilder(OutputBuilder):
     The wcs is taken from a reference wcs (e.g. from a set of Fits files), but can reset the
     pointing position to a different location on the sky.
     """
+    def setup(self, config, base, file_num, logger):
+        logger.debug("Start DESTileBuilder setup file_num=%d"%file_num)
+        
+        #Make sure tile_num, band_num, exp_num, chip_num are considered valid index_keys
+        if "tile_num" not in galsim.config.process.valid_index_keys:
+            galsim.config.valid_index_keys += ["tile_num", "band_num", "exp_num", "chip_num"]
+            galsim.config.eval_base_variables += ["tile_num","band_num", "exp_num", "chip_num"]
+
+
+        if 'ntiles' in config:
+            # Sometimes this will be called prior to ProcessInput being called, so if there is an
+            # error, try loading the inputs and then try again.
+            try:
+                ntiles = galsim.config.ParseValue(config, 'ntiles', base, int)[0]
+            except:
+                galsim.config.ProcessInput(base, safe_only=True)
+                ntiles = galsim.config.ParseValue(config, 'ntiles', base, int)[0]
+        else:
+            ntiles = 1
+
+        # We'll be setting the random number seed to repeat for each band, which requires
+        # querying the number of objects in the exposure.  This however leads to a logical
+        # infinite loop if the number of objects is a random variate.  So to make this work,
+        # we first get the number of objects in each exposure using a well-defined rng, and
+        # save those values to a list, which is then fully deterministic for all other uses.
+        if 'nobjects' not in base['image']:
+            raise ValueError("image.nobjects is required for output type 'DESTileBuilder'")
+        nobj = base['image']['nobjects']
+        if not isinstance(nobj, dict) or not nobj.get('_setup_as_list', False):
+            logger.debug("generating nobj for all tiles:")
+            seed = galsim.config.ParseValue(base['image'], 'random_seed', base, int)[0]
+            base['tile_num_rng'] = base['rng'] = galsim.BaseDeviate(seed)
+            nobj_list = []
+            for tile_num in range(ntiles):
+                base['tile_num'] = tile_num
+                nobj = galsim.config.ParseValue(base['image'], 'nobjects', base, int)[0]
+                nobj_list.append(nobj)
+            base['image']['nobjects'] = {
+                'type' : 'List',
+                'items' : nobj_list,
+                'index_key' : 'tile_num',
+                '_setup_as_list' : True,
+            }
+        logger.debug('nobjects = %s', galsim.config.CleanConfig(base['image']['nobjects']))
+
+        # Set the random numbers to repeat for the objects so we get the same objects in the field
+        # each time. In fact what we do is generate three sets of random seeds:
+        # 0 : Sequence of seeds that iterates with obj_num i.e. no repetetion. Used for noise
+        # 1 : Sequence of seeds that starts with the first object number for a given tile, then iterates 
+        # with the obj_num minus the first object number for that band, intended for quantities 
+        # that should be the same between bands for a given tile.
+
+        rs = base['image']['random_seed']
+        if not isinstance(rs,list):
+            first = galsim.config.ParseValue(base['image'], 'random_seed', base, int)[0]
+            base['image']['random_seed'] = []
+            # The first one is the original random_seed specification, used for noise, since
+            # that should be different for each band, and probably most things in input, output,
+            # or image.
+            if isinstance(rs,int):
+                base['image']['random_seed'].append(
+                    { 'type' : 'Sequence', 'index_key' : 'obj_num', 'first' : first } )
+            else:
+                base['image']['random_seed'].append(rs)
+
+            # The second one is used for the galaxies and repeats through the same set of seed
+            # values for each band in a tile.
+            if nobj>0:
+                base['image']['random_seed'].append(
+                    {
+                        'type' : 'Eval',
+                        'str' : 'first + tile_start_obj_num + (obj_num - tile_start_obj_num) % nobjects',
+                        'ifirst' : first,
+                        'inobjects' : { 'type' : 'Current', 'key' : 'image.nobjects' }
+                    }
+                )
+            else:
+                base['image']['random_seed'].append(base['image']['random_seed'][0])
+
+
+            # The third iterates per tile
+            base['image']['random_seed'].append(
+                { 'type' : 'Sequence', 'index_key' : 'tile_num', 'first' : first } )
+
+
+            if 'gal' in base:
+                base['gal']['rng_num'] = 1
+            if 'stamp' in base:
+                base['stamp']['rng_num'] = 1
+            if 'image_pos' in base['image']:
+                base['image']['image_pos']['rng_num'] = 1
+            if 'world_pos' in base['image']:
+                base['image']['world_pos']['rng_num'] = 1
+
+
     def getNFiles(self, config, base):
         """Returns the number of files to be built.
 
