@@ -17,6 +17,7 @@ class TileInput(object):
     ThisExpNum          The current exposure number - an integer index, starting from zero, 
                         recording the current exposure in the tile (not an official DES exposure
                         number)
+    ThisChipNum         The current chip number (just [0, number of chips] - not an offical ccd number or anything)
     TileRAMin           Minimum ra, with which to simulate objects - this is inferred from the coadd file.
 
     @param source_list     The file containing a list of source exposures filenames and zero-points for the tile
@@ -126,7 +127,6 @@ def TileNFiles(config, base, value_type):
 def TileNExp(config, base, value_type):
     tile = galsim.config.GetInputObj('tile', config, base, 'TileNExp')
     return tile.get_nexp()
-
 def TileThisFileName(config, base, value_type):
     tile = galsim.config.GetInputObj('tile', config, base, 'TileThisFileName')
     index, index_key = galsim.config.GetIndex(config, base)
@@ -184,8 +184,7 @@ class DESTileBuilder(OutputBuilder):
         #Make sure tile_num, band_num, exp_num, chip_num are considered valid index_keys
         if "tile_num" not in galsim.config.process.valid_index_keys:
             galsim.config.valid_index_keys += ["tile_num", "band_num", "exp_num", "chip_num"]
-            galsim.config.eval_base_variables += ["tile_num","band_num", "exp_num", "chip_num"]
-
+            galsim.config.eval_base_variables += ["tile_num", "band_num", "exp_num", "chip_num", "tile_start_obj_num", "nfiles"]
 
         if 'ntiles' in config:
             # Sometimes this will be called prior to ProcessInput being called, so if there is an
@@ -271,6 +270,44 @@ class DESTileBuilder(OutputBuilder):
                 base['image']['image_pos']['rng_num'] = 1
             if 'world_pos' in base['image']:
                 base['image']['world_pos']['rng_num'] = 1
+        
+        logger.debug('random_seed = %s', galsim.config.CleanConfig(base['image']['random_seed']))
+        bands = config["bands"]
+        nbands = len(config["bands"])
+
+        #We need to get the tile_num and tile_start_obj_num from file_num
+        #This is tricky because different tiles can have different numbers of files,
+        #so we can't just say tile_num = file_num // n_files_per_tile
+        #So instead, generate a list of tile_num for each file_num:
+        if "_tile_num_for_file_num" not in base:
+            tile_num_for_file_num = []
+            nfiles = 0
+            for tile_num in range(ntiles):
+                base["tile_num"] = tile_num
+                n_images_in_tile = galsim.config.ParseValue(base["input"], "TileNFiles", base, int)[0]
+                tile_num_for_file_num += [tile_num] * n_images_in_tile
+                nfiles += n_image_in_tile
+            base["nfiles"] = nfiles
+            base["_tile_num_for_file_num"] = tile_num_for_file_num
+            #Also useful is the number of times each list has occured so far - this is the image number within a tile
+            #which we'll use below
+            l = tile_num_for_file_num
+            base["_image_num_in_tile"] = [ l[:i].count(l[i]) for i in range(len(l)) ]
+            print("tile_num_for_file_num:", base["_tile_num_for_file_num"])
+            print("image_num_in_tile:", base["_tile_num_for_file_num"])
+            
+        #Now set the tile_num
+        base["tile_num"] = base["_tile_num_for_file_num"][file_num]
+        #And tile_star_obj_num
+        nobjects = galsim.config.ParseValue(base['image'], 'nobjects', base, int)[0]
+        #tile_start_obj_num is the object number of the first object in the current tile
+        base["tile_start_obj_num"] = base['start_obj_num'] - base["_image_num_in_tile"][file_num] * nobjects
+
+        logger.debug('file_num, ntiles, nband = %d, %d, %d', file_num, ntiles, nbands)
+        logger.debug('tile_num, band_num = %d, %d', tile_num, band_num)
+
+        # This sets up the RNG seeds.
+        OutputBuilder.setup(self, config, base, file_num, logger)
 
 
     def getNFiles(self, config, base):
@@ -285,14 +322,13 @@ class DESTileBuilder(OutputBuilder):
 
         @returns the number of "files" to build.
         """
-        # This is the first function from the OutputBuilder that gets called, so this is the
-        # earliest that we get add this to the list of valid index keys.
-        #if 'exp_num' not in galsim.config.process.valid_index_keys:
-        #    galsim.config.process.valid_index_keys += ['exp_num']
-        if 'nfiles' in config:
-            return galsim.config.ParseValue(config, 'nfiles', base, int)[0]
+        if "tile" in base["input"]:
+            with open(base["input"]["tile"]["source_list"], "r") as f:
+                lines = [l.strip() for l in f.readlines() if l.strip()!=""]
+            nfiles = len(lines)
         else:
-            return 1
+            print("Assuming tile input to get ntiles, but couldn't find tile input section")
+        return nfiles
 
     def buildImages(self, config, base, file_num, image_num, obj_num, ignore, logger):
         """Build the images
@@ -308,149 +344,20 @@ class DESTileBuilder(OutputBuilder):
 
         @returns a list of the images built
         """
-        #n_images is the number of images in the tile, across all the input exposures, of which
-        #there are nexp.
-        req = { 'nimages' : int, 'nexp' : int}
+
+        logger.info('Starting buildImages')
+        logger.info('tile_num: %d'%base['tile_num'])
+        logger.info('file_num: %d'%base['file_num'])
+        logger.info('image_num: %d'%base['image_num'])
+
+        ignore += ["ntiles", "n_images_in_tile"]
         ignore += [ 'file_name', 'dir' ]
 
-        kwargs, safe = galsim.config.GetAllParams(config, base, req=req, ignore=ignore)
-
-        nimages, nexp = kwargs['nimages'], kwargs['nexp']
-
-        if 'eval_variables' not in base:
-            base['eval_variables'] = {}
-
-        #Generate psf parameters for each exposure from the meta_params.
-        #Attempted to do this by generating a list of meta_params for each key.
-        #For each exposure, replacing base['meta_params'] with it's original 
-        #value means it is evaluated again.
-        if 'meta_params' in base:
-            meta_param_list_dict = {}  #dict of meta_param lists
-            meta_params_orig = copy.deepcopy(base['meta_params'])
-            for iexp in range(nexp):
-                base['rng'] = galsim.BaseDeviate(1234+iexp)
-                for key in base['meta_params']:
-                    if key not in meta_param_list_dict:
-                        meta_param_list_dict[key]=[]
-                    param = galsim.config.ParseValue(base['meta_params'], key, base, float)[0]
-                    meta_param_list_dict[key].append(param)
-                base['meta_params'] = meta_params_orig
-
-            #Now save to eval variables - the idea is the psf parameters for the current exposure can be
-            #recovered from this list using ThisExpNum
-            base['eval_variables']['f%s'%(key)] = meta_param_list_dict[key]
-
-        # Set the random numbers to repeat for the objects so we get the same objects in the field
-        # each time.
-        rs = base['image']['random_seed']
-        if not isinstance(rs,list):
-            nobjects = galsim.config.GetCurrentValue('image.nobjects', base, int)
-            first = galsim.config.ParseValue(base['image'], 'random_seed', base, int)[0]
-            base['image']['random_seed'] = [
-                {  # Used for most things.  Repeats for each chip.
-                    'type' : 'Eval',
-                    'str' : 'first_seed + obj_num % @image.nobjects',
-                    'ifirst_seed' : '$%d + file_num * @image.nobjects'%first
-                }
-            ]
-            # The second one is the original random_seed specification,  used for noise, since
-            # that should be different on each chip.
-            if isinstance(rs,int):
-                base['image']['random_seed'].append(
-                    { 'type' : 'Sequence', 'index_key' : 'obj_num', 'first' : first } )
-            else:
-                base['image']['random_seed'].append(rs)
-            if 'noise' in base['image']:
-                base['image']['noise']['rng_num'] = 1
-
-        # We let GalSim do its normal BuildFiles thing now, which would run in parallel
-        # if appropriate.  And it writes each image to disk as it gets made rather than holding
-        # the full exposure in memory before writing anything.  So copy over the current
-        # config into a new dict and make appropriate adjustments to make it work.
-        simple_config = {}
-        simple_config.update(config)
-        simple_config['nfiles'] = nimages
-        simple_config['type'] = 'Fits'
-        base['output'] = simple_config
-        if 'nproc' in base['image']:
-            simple_config['nproc'] = base['image']['nproc']
-        #base['exp_num'] = base['file_num']
-#
-        if 'nexp' not in galsim.config.output.output_ignore:
-            galsim.config.output.output_ignore += ['nexp', 'nimages']
-
-        galsim.config.BuildFiles(nimages, base, file_num, logger=logger)
-
-        # Go back to the original dict.
-        base['output'] = config
-
-        # The calling function is expecting to get some images to write.  Give it something
-        # to avoid errors, but we won't write these.
-        return [galsim.Image()] * nimages
-
-    
-    #def getFilename(self, config, base, logger):
-    #    """Get the file_name for the current file being worked on.
-#
-    #    Note that the base class defines a default extension = '.fits'.
-    #    This can be overridden by subclasses by changing the default_ext property.
-#
-    #    @param config           The configuration dict for the output type.
-    #    @param base             The base configuration dict.
-    #    @param ignore           A list of parameters that are allowed to be in config['output']
-    #                            that we can ignore here.  i.e. it won't be an error if these
-    #                            parameters are present.
-    #    @param logger           If given, a logger object to log progress.
-#
-    #    @returns the filename to build.
-    #    """
-    #    # Typically, the filename will depend on the chip_num, but if this gets called before
-    #    # buildImages, then it won't be ready, so just check.
-    #    if 'eval_variables' not in base:
-    #        base['eval_variables'] = {}
-    #    #if 'ichip_num' not in base['eval_variables']:
-    #    #    base['eval_variables']['ichip_num'] = 0
-    #    #if 'iexp_num' not in base['eval_variables']:
-    #    #    base['eval_variables']['iexp_num'] = base['file_num']
-    #    #if 'exp_num' not in base:
-    #    #    base['exp_num'] = base['file_num']
-    #    return super(DESTileBuilder, self).getFilename(config, base, logger)
+        images = OutputBuilder.buildImages(self, config, base, file_num, image_num, obj_num,
+                                           ignore, logger)
+        return images
     
 
-    def writeFile(self, data, file_name, config, base, logger):
-        """Write the data to a file.
-
-        @param data             The data to write.  Usually a list of images returned by
-                                buildImages, but possibly with extra HDUs tacked onto the end
-                                from the extra output items.
-        @param file_name        The file_name to write to.
-        @param config           The configuration dict for the output field.
-        @param base             The base configuration dict.
-        @param logger           If given, a logger object to log progress.
-        """
-        # These were already written during the BuildImages call, so don't do anything here.
-        return
-
-    def getNImages(self, config, base, file_num):
-        """
-        Get the number of images for a FocalPlane output type.
-
-        @param config           The configuration dict for the output field.
-        @param base             The base configuration dict.
-        @param file_num         The current file number.
-
-        @returns the number of images
-        """
-        if 'nimages' not in config:
-            raise AttributeError("Attribute output.nimages is required for output.type = DesTile")
-        return galsim.config.ParseValue(config,'nimages',base,int)[0]
-
-    # Both of these steps will already have been done by the Fits builder.  Don't do anything here.
-    def addExtraOutputHDUs(self, config, data, logger):
-        return data
-
-    def writeExtraOutputs(self, config, data, logger):
-        pass
 
 galsim.config.process.top_level_fields += ['meta_params']
 galsim.config.output.RegisterOutputType('DESTile', DESTileBuilder())
