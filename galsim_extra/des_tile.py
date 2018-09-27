@@ -2,172 +2,8 @@ import galsim
 import os
 import numpy as np
 import copy
-
+import yaml
 from galsim.config.output import OutputBuilder
-
-class TileInput(object):
-    """A class for for inputting DES tile information.
-
-    It is connected to the following other value types:
-
-    TileNFiles          An integer value giving the number of images in the tile.
-    TileNExp            An integer value givin the number of exposures in the tile.
-    TileThisFileName    The current image file name from this listing.  (Uses either the current index
-                        or can set index_key if desired.)
-    ThisExpNum          The current exposure number - an integer index, starting from zero, 
-                        recording the current exposure in the tile (not an official DES exposure
-                        number)
-    ThisChipNum         The current chip number (just [0, number of chips] - not an offical ccd number or anything)
-    TileRAMin           Minimum ra, with which to simulate objects - this is inferred from the coadd file.
-
-    @param source_list     The file containing a list of source exposures filenames and zero-points for the tile
-    @param coadd_file      Coadd image file - used for it's wcs....
-    """
-    # The normal way to tell GalSim what parameters are required and/or optional is
-    # through some class attributes given here:
-    _req_params = {
-        "source_list" : str,    # The file containing a list of source exposures for the tile
-        "coadd_file" : str
-    }
-    # And some other attributes that are required to be present if you do the above.
-    _opt_params = {}
-    _single_params = []
-    _takes_rng = False
-
-    def __init__(self, source_list, coadd_file):
-        #Read in the text file and produce lists of exposure number (here 
-        #this is just and index, rather than some official thing). 
-        #filename, and magnitude zeropoint. 
-        #Images from the same exposure are identified by being in the same 
-        #directory.
-        self.exp_nums=[]
-        self.files=[]
-        self.mag_zps=[]
-        self.unique_im_dirs=[]
-        with open(source_list,'r') as f:
-            lines=f.readlines()
-            for l in lines:
-                s=(l.strip()).split()
-                im_path, mag_zp = os.path.normpath(s[0]), float(s[1])
-                im_dir, im_file = os.path.dirname(im_path), os.path.basename(im_path)
-                if im_dir not in self.unique_im_dirs:
-                    self.unique_im_dirs.append(im_dir)
-                exp_num = self.unique_im_dirs.index(im_dir)
-                self.exp_nums.append(exp_num)
-                self.files.append(im_path)
-                self.mag_zps.append(mag_zp)
-
-        #print("files:")
-        #print(self.files)
-        #print("exp_nums:")
-        #print(self.exp_nums)
-
-        #Also read in coadd_file to get bounds
-        coadd_header = galsim.FitsHeader(file_name = coadd_file)
-        wcs,origin = galsim.wcs.readFromFitsHeader(coadd_header)
-        xsize = coadd_header['NAXIS1']
-        ysize = coadd_header['NAXIS2']
-        im_pos1 = galsim.PositionD(0,0)
-        im_pos2 = galsim.PositionD(0,ysize)
-        im_pos3 = galsim.PositionD(xsize,0)
-        im_pos4 = galsim.PositionD(xsize,ysize)
-        corners = []
-        corners.append(wcs.toWorld(im_pos1))
-        corners.append(wcs.toWorld(im_pos2))
-        corners.append(wcs.toWorld(im_pos3))
-        corners.append(wcs.toWorld(im_pos4))
-        ra_list = [p.ra.wrap(corners[0].ra) for p in corners]
-        dec_list = [p.dec for p in corners]
-        self.minra = np.min(np.array([ra/galsim.radians for ra in ra_list]))
-        self.maxra = np.max(np.array([ra/galsim.radians for ra in ra_list]))
-        self.mindec = np.min(np.array([dec/galsim.radians for dec in dec_list]))
-        self.maxdec = np.min(np.array([dec/galsim.radians for dec in dec_list]))
-
-    def get_nfile(self):
-        """Return the number of files.
-        """
-        return len(self.exp_nums)
-
-    def get_nexp(self):
-        return len(self.unique_im_dirs)
-
-    def get_filename(self, index):
-        return self.files[index]
-
-    def get_psfex_filename(self, index):
-        image_filename = self.files[index]
-        image_dir = os.path.dirname(image_filename)
-        image_base = os.path.basename(image_filename)
-        psfex_dir = image_dir.replace("red/immask","psf")
-        psfex_base = image_base.replace("immasked.fits.fz", "psfexcat.psf")
-        return os.path.join(psfex_dir, psfex_base)
-
-    def get_exp_num(self, index):
-        return self.exp_nums[index]
-
-    def get_mag_zp(self, index):
-        return self.mag_zps[index]
-
-    def get_min_ra(self):
-        return self.minra
-
-    def get_max_ra(self):
-        return self.maxra
-
-    def get_min_dec(self):
-        return self.mindec
-
-    def get_max_dec(self):
-        return self.maxdec
-
-def TileNFiles(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileNFiles')
-    return tile.get_nfile()
-
-def TileNExp(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileNExp')
-    return tile.get_nexp()
-def TileThisFileName(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileThisFileName')
-    index, index_key = galsim.config.GetIndex(config, base)
-    return tile.get_filename(index)
-
-def TileThisPSFExFileName(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileThisFileName')
-    index, index_key = galsim.config.GetIndex(config, base)
-    return tile.get_psfex_filename(index)
-
-def ThisExpNum(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'ThisExpNum')
-    index, index_key = galsim.config.GetIndex(config, base)
-    return tile.get_exp_num(index)
-
-def TileRAMin(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileRAMin')
-    return tile.get_min_ra()
-
-def TileRAMax(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileRAMax')
-    return tile.get_max_ra()
-
-def TileDecMin(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileDecMin')
-    return tile.get_min_dec()
-
-def TileDecMax(config, base, value_type):
-    tile = galsim.config.GetInputObj('tile', config, base, 'TileDecMax')
-    return tile.get_max_dec()
-
-galsim.config.RegisterInputType('tile', galsim.config.InputLoader(TileInput, file_scope=True))
-galsim.config.RegisterValueType('TileNFiles', TileNFiles, [int], input_type='tile')
-galsim.config.RegisterValueType('ThisExpNum', ThisExpNum, [int], input_type='tile')
-galsim.config.RegisterValueType('TileNExp', TileNExp, [int], input_type='tile')
-galsim.config.RegisterValueType('TileThisFileName', TileThisFileName, [str], input_type='tile')
-galsim.config.RegisterValueType('TileThisPSFExFileName', TileThisPSFExFileName, [str], input_type='tile')
-galsim.config.RegisterValueType('TileRAMin', TileRAMin, [float], input_type='tile')
-galsim.config.RegisterValueType('TileRAMax', TileRAMax, [float], input_type='tile')
-galsim.config.RegisterValueType('TileDecMin', TileDecMin, [float], input_type='tile')
-galsim.config.RegisterValueType('TileDecMax', TileDecMax, [float], input_type='tile')
 
 class DESTileBuilder(OutputBuilder):
     """Implements the DESTile custom output type.
@@ -272,39 +108,99 @@ class DESTileBuilder(OutputBuilder):
                 base['image']['world_pos']['rng_num'] = 1
         
         logger.debug('random_seed = %s', galsim.config.CleanConfig(base['image']['random_seed']))
+
+        #Now, if we haven't already, we need to read in some things which determine what images to simulate
+        tilenames = config["tilenames"]
+        ntiles = len(tilenames)
         bands = config["bands"]
-        nbands = len(config["bands"])
+        
+        if "_tile_setup" not in config:
+            tile_setup = {}
+            tile_num_list = []  #Total number of images length list of tile number
+            exp_num_list = []   #Total number of images length list of exposure number
+            file_num_in_exp_list = []   #Total number of images length list of files
+            band_list = []  #Total number of images length list of band
+            im_file_list = []
+            mag_zp_list = []
+            unique_im_dirs = []
+            psfex_file_list = []
+            ra_ranges_deg = []
+            dec_ranges_deg = []
+            for tile_num,tilename in enumerate(tilenames):
+                #Get single-epoch image info for this tile
+                for band in bands:
+                    source_list = os.path.join( os.environ["DESDATA"], tilename, "lists", "%s_%s_fcut-flist-y3v02.dat"%(tilename, band))
+                    with open(source_list, "r") as f:
+                        lines = f.readlines()
+                    lines = [l.strip() for l in lines if l.strip()!=""] #remove empty lines
+                    image_files = [l.split()[0] for l in lines]
+                    #also get psfex file here
+                    psfex_files = [ os.path.join(os.path.dirname(f).replace("red/immask", "psf"), 
+                                                 "%s_psfexcat.psf"%( "_".join((os.path.basename(f).split("_"))[:-1]))) for f in image_files ]
+                    psfex_file_list += psfex_files
+                    mag_zps = [float(l.split()[1]) for l in lines]
+                    im_file_list += image_files
+                    mag_zp_list += mag_zps
+                    im_dirs = [ os.path.dirname(f) for f in image_files ]
+                    for d in im_dirs:
+                        if d not in unique_im_dirs:
+                            unique_im_dirs.append(d)
+                    tile_num_list += [tile_num] * len(image_files)
+                    band_list += band * len(image_files)
 
-        #We need to get the tile_num and tile_start_obj_num from file_num
-        #This is tricky because different tiles can have different numbers of files,
-        #so we can't just say tile_num = file_num // n_files_per_tile
-        #So instead, generate a list of tile_num for each file_num:
-        if "_tile_num_for_file_num" not in base:
-            tile_num_for_file_num = []
-            nfiles = 0
-            for tile_num in range(ntiles):
-                base["tile_num"] = tile_num
-                n_images_in_tile = galsim.config.ParseValue(base["input"], "TileNFiles", base, int)[0]
-                tile_num_for_file_num += [tile_num] * n_images_in_tile
-                nfiles += n_image_in_tile
-            base["nfiles"] = nfiles
-            base["_tile_num_for_file_num"] = tile_num_for_file_num
-            #Also useful is the number of times each list has occured so far - this is the image number within a tile
-            #which we'll use below
-            l = tile_num_for_file_num
-            base["_image_num_in_tile"] = [ l[:i].count(l[i]) for i in range(len(l)) ]
-            print("tile_num_for_file_num:", base["_tile_num_for_file_num"])
-            print("image_num_in_tile:", base["_tile_num_for_file_num"])
-            
-        #Now set the tile_num
-        base["tile_num"] = base["_tile_num_for_file_num"][file_num]
-        #And tile_star_obj_num
-        nobjects = galsim.config.ParseValue(base['image'], 'nobjects', base, int)[0]
+                #Also get bounds from the coadd
+                tile_data_file = os.path.join( os.environ["DESDATA"], tilename, "lists", "%s_%s_fileconf-y3v02.yaml"%(tilename, band))
+                with open(tile_data_file, "rb") as f:
+                    tile_data = yaml.load(f)
+                coadd_file = tile_data["coadd_image_url"]
+                wcs = galsim.wcs.readFromFitsHeader(coadd_file)
+                xmin,xmax,ymin,ymax = 1.,10000.,1.,10000.
+                corners = [ wcs[0].toWorld( galsim.PositionD(a,b) ) for (a,b) in [ (xmin, ymin), (xmin, ymax), (xmax, ymin), (xmax, ymax) ] ]
+                corner_ras_deg = [ c.ra.wrap( corners[0].ra ) / galsim.degrees for c in corners ]
+                corner_decs_deg = [ c.dec / galsim.degrees for c in corners ]
+                ra_ranges_deg.append(( np.min(corner_ras_deg), np.max(corner_ras_deg) ))
+                dec_ranges_deg.append(( np.min(corner_decs_deg), np.max(corner_decs_deg) ))
+                
+
+            config["_tile_setup"] = {}
+            tile_setup = config["_tile_setup"]
+            tile_setup["image_files"] = im_file_list
+            tile_setup["tile_num_list"] = tile_num_list
+            tile_setup["file_num_in_tile"] = [ tile_num_list[:i].count(tile_num_list[i]) for i in range(len(tile_num_list)) ]
+            tile_setup["mag_zp_list"] = mag_zp_list
+            tile_setup["psfex_files"] = psfex_file_list
+            tile_setup["ra_ranges_deg"] = ra_ranges_deg
+            tile_setup["dec_ranges_deg"] = dec_ranges_deg
+            tile_setup["band_list"] = band_list
+
+        #Random seed stuff needs tile_num and tile_start_obj_num
+        tile_setup = config["_tile_setup"]
+        tile_num = tile_setup["tile_num_list"][file_num]
+        base["tile_num"] = tile_num
+        nobjects = galsim.config.ParseValue(base["image"], "nobjects", base, int)[0]
         #tile_start_obj_num is the object number of the first object in the current tile
-        base["tile_start_obj_num"] = base['start_obj_num'] - base["_image_num_in_tile"][file_num] * nobjects
+        base["tile_start_obj_num"] = base['start_obj_num'] - tile_setup["file_num_in_tile"][file_num] * nobjects
+        
+        #Set some eval_variables that can be used in the config file.
+        #In particular:
+        # - input image filename for wcs
+        # - input image psfex filename
+        # - tile bounds
+        # - magnitude zeropoint (for converting mags to fluxes)
+        # - band
+        # - probably other stuff
+        base["eval_variables"]["sband"] = tile_setup["band_list"][file_num]
+        base["eval_variables"]["simage_path"] = tile_setup["image_files"][file_num]
+        base["eval_variables"]["fmag_zp"] = tile_setup["mag_zp_list"][file_num]
+        base["eval_variables"]["spsfex_path"] = tile_setup["psfex_files"][file_num]
+        base["eval_variables"]["fra_min_deg"] = tile_setup["ra_ranges_deg"][tile_num][0]
+        base["eval_variables"]["fra_max_deg"] = tile_setup["ra_ranges_deg"][tile_num][1]
+        base["eval_variables"]["fdec_min_deg"] = tile_setup["dec_ranges_deg"][tile_num][0]
+        base["eval_variables"]["fdec_max_deg"] = tile_setup["dec_ranges_deg"][tile_num][1]
 
-        logger.debug('file_num, ntiles, nband = %d, %d, %d', file_num, ntiles, nbands)
-        logger.debug('tile_num, band_num = %d, %d', tile_num, band_num)
+        logger.debug('file_num, ntiles, nband = %d, %d, %d', file_num, ntiles, len(bands))
+        logger.debug('tile_num, band = %d, %s', tile_num, base["eval_variables"]["sband"] )
+        #print(base["eval_variables"])
 
         # This sets up the RNG seeds.
         OutputBuilder.setup(self, config, base, file_num, logger)
@@ -321,13 +217,23 @@ class DESTileBuilder(OutputBuilder):
         @param base             The base configuration dict.
 
         @returns the number of "files" to build.
+        
+        This function gets called early, before the setup function, as the number of 
+        files is required to split up jobs sensibly. So we need to do read in some
+        information about the tiles being simulated here
         """
-        if "tile" in base["input"]:
-            with open(base["input"]["tile"]["source_list"], "r") as f:
-                lines = [l.strip() for l in f.readlines() if l.strip()!=""]
-            nfiles = len(lines)
-        else:
-            print("Assuming tile input to get ntiles, but couldn't find tile input section")
+        tilenames = config["tilenames"]
+        bands = config["bands"]
+        nfiles = 0
+        for tilename in tilenames:
+            #Read in source lists
+            for band in bands:
+                source_list = os.path.join( os.environ["DESDATA"], tilename, "lists", "%s_%s_fcut-flist-y3v02.dat"%(tilename, band) )
+                with open(source_list, 'r') as f:
+                    lines = f.readlines()
+                    image_files = [l.strip() for l in lines if l.strip()!=""]
+                    nfiles += len(image_files)
+
         return nfiles
 
     def buildImages(self, config, base, file_num, image_num, obj_num, ignore, logger):
@@ -344,13 +250,12 @@ class DESTileBuilder(OutputBuilder):
 
         @returns a list of the images built
         """
-
         logger.info('Starting buildImages')
         logger.info('tile_num: %d'%base['tile_num'])
         logger.info('file_num: %d'%base['file_num'])
         logger.info('image_num: %d'%base['image_num'])
 
-        ignore += ["ntiles", "n_images_in_tile"]
+        ignore += ["tilenames", "bands"]
         ignore += [ 'file_name', 'dir' ]
 
         images = OutputBuilder.buildImages(self, config, base, file_num, image_num, obj_num,
