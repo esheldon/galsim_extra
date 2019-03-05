@@ -54,7 +54,7 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         ignore = ignore + ['objects', 'magnify', 'shear']
 
         # Now go on and do the rest of the normal setup.
-        return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
+        return super(MixedSceneBuilder, self).setup(config,base,xsize,ysize,ignore,logger)
 
     def buildProfile(self, config, base, psf, gsparams, logger):
         obj_type = base['current_obj_type']
