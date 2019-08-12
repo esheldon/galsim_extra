@@ -22,8 +22,8 @@ BASE_CONFIG={
                      'nobjects' : 100,
                      'nfiles' : 1,
                      'nstamps_per_object' : 1,
-                     'file_name' : "meds_%d.fits"%0,
-                     'truth': {'file_name' : "truth_%d.dat"%0,
+                     'file_name' : "output/meds_%d.fits"%0,
+                     'truth': {'file_name' : "output/truth_%d.dat"%0,
                                'columns' : {'num': 'obj_num', 'hlr':'$(@gal.half_light_radius)'}}
                    },
         'input' : { 'cosmos_sampler' : { 'min_r50' : 0.15, 'max_r50' : 1., 'min_flux' : 2.5, 'max_flux' : 100 }}
@@ -70,7 +70,7 @@ def test_truth():
 
     #Now run the original config after changing the truth file_name
     i_run=1
-    config['output']['truth']['file_name'] = "truth_%d.dat"%i_run
+    config['output']['truth']['file_name'] = "output/truth_%d.dat"%i_run
     galsim.config.Process(config, logger=logger)
     truth_data_1 = np.loadtxt(config['output']['truth']['file_name'])
     np.testing.assert_array_equal(truth_data_0, truth_data_1)
