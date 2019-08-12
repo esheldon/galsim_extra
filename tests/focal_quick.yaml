@@ -280,7 +280,6 @@ input:
         units: arcsec
         grid_spacing: 10
         ngrid: '$math.ceil(2*focal_rmax / @input.power_spectrum.grid_spacing)'
-        center: 0,0
         variance: '$rms_e**2'  # rms_e is given in meta_params
 
     catalog:
@@ -339,7 +338,11 @@ output:
 
             obj_type: '@current_obj_type'
             obj_type_index: '@current_obj_type_index'
-            flux: "$(@current_obj).flux"
+
+            # Not sure why float is needed here.  Sometimes it comes back as a float, other times
+            # as a np.float64, and GalSim complains that the types don't match.  So just always
+            # cast it to float.
+            flux: "$float((@current_obj).flux)"
             shear_g1: stamp.shear.g1
             shear_g2: stamp.shear.g2
 

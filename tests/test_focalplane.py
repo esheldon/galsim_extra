@@ -14,7 +14,7 @@ def test_truth():
     if __name__ == '__main__':
         logger.setLevel(logging.DEBUG)
 
-    galsim.config.Process(config, logger=logger)
+    galsim.config.Process(config, logger=logger, except_abort=True)
 
     exp_data_list = []
     for exp in range(2):
