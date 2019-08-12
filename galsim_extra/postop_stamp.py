@@ -11,13 +11,13 @@ class PostOpStampBuilder(StampBuilder):
         ignore = ignore + [
             'dilate', 'dilation', 'ellip', 'rotate', 'rotation', 'scale_flux',
             'magnify', 'magnification', 'shear', 'shift' ]
-        return super(self.__class__,self).setup(config,base,xsize,ysize,ignore,logger)
+        return super(PostOpStampBuilder,self).setup(config,base,xsize,ysize,ignore,logger)
 
     def buildProfile(self, config, base, psf, gsparams, logger):
         # Change the psf appropriately
         psf, safe = TransformObject(psf, config, base, logger)
         # Then call the normal buildProfile with the new psf object.
-        return super(self.__class__,self).buildProfile(config, base, psf, gsparams, logger)
+        return super(PostOpStampBuilder,self).buildProfile(config, base, psf, gsparams, logger)
 
 RegisterStampType('PostOp', PostOpStampBuilder())
 
