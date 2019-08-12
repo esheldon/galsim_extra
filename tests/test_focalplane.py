@@ -22,7 +22,8 @@ def test_truth():
         data_list = []
         for truth_file in truth_files:
             print(truth_file)
-            data = np.genfromtxt(os.path.join('output',truth_file), names=True, dtype=None)
+            data = np.genfromtxt(os.path.join('output',truth_file), names=True, dtype=None,
+                                 encoding='ascii')
             print('file %s = '%truth_file, data)
             data_list.append(data)
         exp_data_list.append(data_list)
