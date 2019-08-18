@@ -162,6 +162,7 @@ class FocalPlaneBuilder(OutputBuilder):
 
         exp_num = base['exp_num']
         chip_num = base['chip_num']
+        first_chip_num = base['chip_num']
         req = { 'nchips' : int, }
         opt = { 'nexp' : int, }
         ignore += [ 'file_name', 'dir' ]
@@ -178,6 +179,7 @@ class FocalPlaneBuilder(OutputBuilder):
             # Get the celestial coordinates of all the chip corners
             corners = []
             for chip_num in range(nchips):
+                base['chip_num'] = chip_num
                 wcs = galsim.config.wcs.BuildWCS(base['image'],'wcs', base, logger)
                 if not wcs.isCelestial():
                     raise ValueError("FocalPlane requires a CelestialWCS")
@@ -192,6 +194,9 @@ class FocalPlaneBuilder(OutputBuilder):
                 corners.append(wcs.toWorld(im_pos2))
                 corners.append(wcs.toWorld(im_pos3))
                 corners.append(wcs.toWorld(im_pos4))
+                logger.debug("corners of chip %d = %s",chip_num, [c.rad for c in corners[-4:]])
+
+            chip_num = base['chip_num'] = first_chip_num
 
             # Calculate the pointing as the center (mean) of all the position in corners
             x_list, y_list, z_list = zip(*[p.get_xyz() for p in corners])

@@ -254,13 +254,14 @@ image:
             #items:
             #- { type: Catalog, col: 1, index_key: exp_num }
             #- "$chip_num + 1"
+        index_key: chip_num
         type: Tan
         dudx: 0.26
         dudy: 0.
         dvdx: 0.
         dvdy: 0.26
         units: arcsec
-        ra: 19.3 hours
+        ra: '$19.3 * galsim.hours + chip_num * 10.8 * galsim.arcmin'
         dec: -33.1 degrees
 
 input:
