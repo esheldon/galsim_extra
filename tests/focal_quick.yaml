@@ -333,6 +333,9 @@ output:
             x: "$image_pos.x"
             y: "$image_pos.y"
 
+            ra: "$(@image.world_pos).ra.deg"
+            dec: "$(@image.world_pos).dec.deg"
+
             psf_fwhm: psf.fwhm
             psf_e1: '$(@psf.ellip).e1'
             psf_e2: '$(@psf.ellip).e2'
