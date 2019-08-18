@@ -17,7 +17,7 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         # Copy the Scattered buildImage function, but with changes to skip building stamps that
         # are clearly not in the image.
 
-        print('start buildImage')
+        #print('start buildImage')
         xsize = base['image_xsize']
         ysize = base['image_ysize']
         wcs = base['wcs']
@@ -56,20 +56,20 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         lr = wcs.toWorld(galsim.PositionD(image.xmax, image.ymin))  # lower-right
         ur = wcs.toWorld(galsim.PositionD(image.xmax, image.ymax))  # upper-right
         cen = wcs.toWorld(image.true_center)
-        print('ll = ',ll)
-        print('ul = ',ul)
-        print('lr = ',lr)
-        print('ur = ',ur)
+        #print('ll = ',ll)
+        #print('ul = ',ul)
+        #print('lr = ',lr)
+        #print('ur = ',ur)
 
         # Push all the corners out by a distance of border
         ll = ll.greatCirclePoint(cen, -border * coord.arcsec)
         ul = ul.greatCirclePoint(cen, -border * coord.arcsec)
         lr = lr.greatCirclePoint(cen, -border * coord.arcsec)
         ur = ur.greatCirclePoint(cen, -border * coord.arcsec)
-        print('ll => ',ll)
-        print('ul => ',ul)
-        print('lr => ',lr)
-        print('ur => ',ur)
+        #print('ll => ',ll)
+        #print('ul => ',ul)
+        #print('lr => ',lr)
+        #print('ur => ',ur)
 
         # Directed edges going around the perimeter
         edges = ( (ll,ul), (ul,ur), (ur,lr), (lr,ll) )
@@ -79,8 +79,8 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         max_ra = max([ll.ra.deg, ul.ra.deg, lr.ra.deg, ur.ra.deg])
         min_dec = min([ll.dec.deg, ul.dec.deg, lr.dec.deg, ur.dec.deg])
         max_dec = max([ll.dec.deg, ul.dec.deg, lr.dec.deg, ur.dec.deg])
-        print('ra range = ',min_ra,max_ra)
-        print('dec range = ',min_dec,max_dec)
+        #print('ra range = ',min_ra,max_ra)
+        #print('dec range = ',min_dec,max_dec)
 
         # Set up rng.
         # Note: This uses the rng of the first object.  Not switching each time.
@@ -93,28 +93,28 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         # Figure out which ones are actually worth building stamps for:
         skip = np.ones(self.nobjects, dtype=bool)
         stamp_world_pos = []  # Keep track of the world_pos values.
-        print('config = ',galsim.config.CleanConfig(config))
+        #print('config = ',galsim.config.CleanConfig(config))
         for k in range(self.nobjects):
             base['obj_num'] = obj_num + k
             pos = galsim.config.ParseWorldPos(config, 'world_pos', base, logger)
             stamp_world_pos.append(pos)
-            print('pos = ',pos.ra.deg,pos.dec.deg)
+            #print('pos = ',pos.ra.deg,pos.dec.deg)
 
             # Trivial check first.
             if pos.ra.deg < min_ra: continue
             if pos.ra.deg > max_ra: continue
             if pos.dec.deg < min_dec: continue
             if pos.dec.deg > max_dec: continue
-            print('passed trivial checks')
+            #print('passed trivial checks')
 
             # Now a more careful check if it is really in the polygon.
             # Check if it is on the same side of all four (directed) edges.
             # Note: The WCS may or may not include a flip, so we don't know whether these
             # should all the left or right.
             lefts = [self._leftside(pos, p1, p2) for p1,p2 in edges]
-            print('lefts = ',lefts)
+            #print('lefts = ',lefts)
             if len(set(lefts)) == 2: continue
-            print('all left or all right')
+            #print('all left or all right')
 
             # OK.  This one is close enough to generate the stamp.
             skip[k] = False
@@ -130,8 +130,8 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
             'type' : 'List',
             'items' : skip
         }
-        print('stamp.world_pos = ',stamp_world_pos)
-        print('quick_skip = ',skip)
+        #print('stamp.world_pos = ',stamp_world_pos)
+        #print('quick_skip = ',skip)
 
         # The rest of this just copies from the normal Scattered buildImage function
         stamps, current_vars = galsim.config.stamp.BuildStamps(
@@ -175,7 +175,7 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
     def add_border(self, pos, center, border):
         """Extend the great circle from ``center`` -> ``pos`` by and additional angle ``border``.
         """
-        
+
         # Define u = pos
         #        v = center
         #        w = (u x v) x u
