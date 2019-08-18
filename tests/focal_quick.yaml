@@ -119,8 +119,8 @@ bright_gal:
             ellip: '@bright_gal.items.1.ellip'
     flux:
         type: Eval
-        # Scale flux up by a factor of 250
-        str: "250.0 * cosmos_flux"
+        # Scale flux up by a factor of 2500
+        str: "2500.0 * cosmos_flux"
         fcosmos_flux: { type: CosmosFlux }
 
 # Faint galaxies use the same population as the bright sample, but scaled
@@ -218,7 +218,7 @@ image:
 
     # Note: The real distribution of sky levels probably isn't flat.  It's probably bimodal,
     # depending on whether the moon is up.  But this is probably ok for now.
-    sky_level: { type: Random, min: 5000, max: 15000, index_key: exp_num }
+    sky_level: { type: Random, min: 500, max: 1500, index_key: exp_num }
 
     random_seed: 8675309
 
@@ -304,11 +304,11 @@ meta_params:
 output:
     type: FocalPlane
 
-    # The number of exposures to build
     # Note: the FocalPlane output type adds another available index key, exp_num.  This can
     # be used as an index_key instead of the usual file_num, image_num, or obj_num.  You can
     # also access it in eval statements as just exp_num.
-    nexp: 2 #'$(input.catalog).getNObjects()'
+
+    nexp: 2    # The number of exposures to build
 
     nchips: 2  # The number of chips per exposure
 
