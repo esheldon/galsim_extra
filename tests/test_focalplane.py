@@ -14,7 +14,11 @@ def test_truth():
     if __name__ == '__main__':
         logger.setLevel(logging.DEBUG)
 
-    galsim.config.Process(config, logger=logger)
+    # Turn off the dithering for this test.
+    config['image']['wcs']['ra'] = '19.3 hours'
+    config['image']['wcs']['dec'] = '-33.1 degrees'
+
+    galsim.config.Process(config, logger=logger, except_abort=True)
 
     exp_data_list = []
     for exp in range(2):
@@ -22,7 +26,8 @@ def test_truth():
         data_list = []
         for truth_file in truth_files:
             print(truth_file)
-            data = np.genfromtxt(os.path.join('output',truth_file), names=True, dtype=None)
+            data = np.genfromtxt(os.path.join('output',truth_file), names=True, dtype=None,
+                                 encoding='ascii')
             print('file %s = '%truth_file, data)
             data_list.append(data)
         exp_data_list.append(data_list)

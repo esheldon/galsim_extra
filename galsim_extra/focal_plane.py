@@ -162,6 +162,7 @@ class FocalPlaneBuilder(OutputBuilder):
 
         exp_num = base['exp_num']
         chip_num = base['chip_num']
+        first_chip_num = base['chip_num']
         req = { 'nchips' : int, }
         opt = { 'nexp' : int, }
         ignore += [ 'file_name', 'dir' ]
@@ -178,6 +179,7 @@ class FocalPlaneBuilder(OutputBuilder):
             # Get the celestial coordinates of all the chip corners
             corners = []
             for chip_num in range(nchips):
+                base['chip_num'] = chip_num
                 wcs = galsim.config.wcs.BuildWCS(base['image'],'wcs', base, logger)
                 if not wcs.isCelestial():
                     raise ValueError("FocalPlane requires a CelestialWCS")
@@ -192,6 +194,9 @@ class FocalPlaneBuilder(OutputBuilder):
                 corners.append(wcs.toWorld(im_pos2))
                 corners.append(wcs.toWorld(im_pos3))
                 corners.append(wcs.toWorld(im_pos4))
+                logger.debug("corners of chip %d = %s",chip_num, [c.rad for c in corners[-4:]])
+
+            chip_num = base['chip_num'] = first_chip_num
 
             # Calculate the pointing as the center (mean) of all the position in corners
             x_list, y_list, z_list = zip(*[p.get_xyz() for p in corners])
@@ -202,19 +207,20 @@ class FocalPlaneBuilder(OutputBuilder):
             logger.info("Calculated center of focal plane to be %s",pointing)
 
             # Also calculate the min/max ra and dec
-            ra_list = [p.ra.wrap(pointing.ra) for p in corners]
-            dec_list = [p.dec for p in corners]
+            ra_list = [p.ra.wrap(pointing.ra) / galsim.degrees for p in corners]
+            dec_list = [p.dec / galsim.degrees for p in corners]
             fov_minra = np.min(ra_list)
             fov_maxra = np.max(ra_list)
             fov_mindec = np.min(dec_list)
             fov_maxdec = np.max(dec_list)
-            logger.info("RA range = %.2f - %.2f deg",
-                        fov_minra/galsim.degrees, fov_maxra/galsim.degrees)
-            logger.info("Dec range = %.2f - %.2f deg",
-                        fov_mindec/galsim.degrees, fov_maxdec/galsim.degrees)
+            logger.info("RA range = %.2f - %.2f deg", fov_minra, fov_maxra)
+            logger.info("Dec range = %.2f - %.2f deg", fov_mindec, fov_maxdec)
 
             # bounds is the bounds in the tangent plane
             proj_list = [ pointing.project(p, projection='gnomonic') for p in corners]
+            # Convert Angle tuples into PositionD in arcsec
+            proj_list = [ galsim.PositionD(p[0]/galsim.arcsec, p[1]/galsim.arcsec)
+                            for p in proj_list ]
             bounds = galsim.BoundsD()
             for proj in proj_list: bounds += proj
             logger.info("Bounds in tangent plane = %s (arcsec)",bounds)
@@ -222,10 +228,10 @@ class FocalPlaneBuilder(OutputBuilder):
             # Write these values into the dict in eval_variables, so they can be used in Eval's.
             base['eval_variables']['aworld_center_ra'] = pointing.ra
             base['eval_variables']['aworld_center_dec'] = pointing.dec
-            base['eval_variables']['afov_minra'] = fov_minra
-            base['eval_variables']['afov_maxra'] = fov_maxra
-            base['eval_variables']['afov_mindec'] = fov_mindec
-            base['eval_variables']['afov_maxdec'] = fov_maxdec
+            base['eval_variables']['afov_minra'] = fov_minra * galsim.degrees
+            base['eval_variables']['afov_maxra'] = fov_maxra * galsim.degrees
+            base['eval_variables']['afov_mindec'] = fov_mindec * galsim.degrees
+            base['eval_variables']['afov_maxdec'] = fov_maxdec * galsim.degrees
             base['eval_variables']['ifirst_image_num'] = image_num
             base['eval_variables']['ffocal_xmin'] = bounds.xmin
             base['eval_variables']['ffocal_xmax'] = bounds.xmax
