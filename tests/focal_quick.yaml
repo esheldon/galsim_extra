@@ -280,7 +280,7 @@ image:
         dvdy: 0.26
         units: arcsec
         ra: '$19.3 * galsim.hours + chip_num * 10.8 * galsim.arcmin'
-        dec: -33.1 degrees
+        dec: '$-33.1 * galsim.degrees + exp_num * galsim.arcmin'
 
 input:
     # Use analytic galaxies with size and flux parameters that match the distribution seen
