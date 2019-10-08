@@ -29,4 +29,5 @@ class PixmappyBuilder(galsim.config.WCSBuilder):
         return wcs
 
 # Register this with GalSim:
-galsim.config.RegisterWCSType('Pixmappy', PixmappyBuilder())
+if 'Pixmappy' not in galsim.config.wcs.valid_wcs_types:
+    galsim.config.RegisterWCSType('Pixmappy', PixmappyBuilder())
