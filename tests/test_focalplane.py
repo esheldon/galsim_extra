@@ -14,6 +14,10 @@ def test_truth():
     if __name__ == '__main__':
         logger.setLevel(logging.DEBUG)
 
+    # Turn off the dithering for this test.
+    config['image']['wcs']['ra'] = '19.3 hours'
+    config['image']['wcs']['dec'] = '-33.1 degrees'
+
     galsim.config.Process(config, logger=logger, except_abort=True)
 
     exp_data_list = []

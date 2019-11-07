@@ -61,6 +61,24 @@ eval_variables:
         - '$(@nearby_gal.items.1.ellip).g2'
         index: '@current_obj_type_index'
 
+    fbulge_frac:
+        type: List
+        items:
+        - 0.
+        - '@bright_gal.items.0.flux'
+        - '@faint_gal.items.0.flux'
+        - '@nearby_gal.items.0.flux'
+        index: '@current_obj_type_index'
+
+    fdisk_smooth_frac:
+        type: List
+        items:
+        - 0.
+        - '@bright_gal.items.1.flux'
+        - '@faint_gal.items.1.flux'
+        - '@nearby_gal.items.1.flux'
+        index: '@current_obj_type_index'
+
 
 # We have several different kinds of objects that we draw.
 #
@@ -262,7 +280,7 @@ image:
         dvdy: 0.26
         units: arcsec
         ra: '$19.3 * galsim.hours + chip_num * 10.8 * galsim.arcmin'
-        dec: -33.1 degrees
+        dec: '$-33.1 * galsim.degrees + exp_num * galsim.arcmin'
 
 input:
     # Use analytic galaxies with size and flux parameters that match the distribution seen
@@ -355,4 +373,5 @@ output:
             bulge_g2: '$bulge_g2'
             disk_g1: '$disk_g1'
             disk_g2: '$disk_g2'
-
+            bulge_frac: '$bulge_frac'
+            smooth_frac: '$disk_smooth_frac'
