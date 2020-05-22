@@ -130,7 +130,7 @@ bright_gal:
                 eta1: { type: RandomGaussian, sigma: 0.4 }
                 eta2: { type: RandomGaussian, sigma: 0.4 }
         -
-            type: RandomWalk
+            type: RandomKnots
             npoints: 100
             half_light_radius: '@bright_gal.items.0.half_light_radius'
             # (relative) flux is 1 - the sum of the other two.
