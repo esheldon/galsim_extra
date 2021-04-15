@@ -71,6 +71,24 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         #print('lr => ',lr)
         #print('ur => ',ur)
 
+        #To avoid issues at ra=0, we're going to use
+        #the wrap function to recast the corner ras to
+        #the range [cen.ra-pi, cen.ra+pi]. We will also
+        #do this with the object positions below when
+        #checking whether to skip them
+        ll = coord.CelestialCoord(
+            ra=ll.ra.wrap(center=cen.ra),
+            dec=ll.dec)
+        ul = coord.CelestialCoord(
+            ra=ul.ra.wrap(center=cen.ra),
+            dec=ul.dec)
+        lr = coord.CelestialCoord(
+            ra=lr.ra.wrap(center=cen.ra),
+            dec=lr.dec)
+        ur = coord.CelestialCoord(
+            ra=ur.ra.wrap(center=cen.ra),
+            dec=ur.dec)
+        
         # Directed edges going around the perimeter
         edges = ( (ll,ul), (ul,ur), (ur,lr), (lr,ll) )
 
@@ -97,21 +115,27 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         for k in range(self.nobjects):
             base['obj_num'] = obj_num + k
             pos = galsim.config.ParseWorldPos(config, 'world_pos', base, logger)
+            #wrap the ra using the same center as we did
+            #for the chip corners, and use this wrapped versions
+            #when testing whether it lands in the chip below.
+            pos_wrapped = coord.CelestialCoord(
+                ra=pos.ra.wrap(center=cen.ra),
+                dec=pos.dec)
             stamp_world_pos.append(pos)
             #print('pos = ',pos.ra.deg,pos.dec.deg)
 
             # Trivial check first.
-            if pos.ra.deg < min_ra: continue
-            if pos.ra.deg > max_ra: continue
-            if pos.dec.deg < min_dec: continue
-            if pos.dec.deg > max_dec: continue
+            if pos_wrapped.ra.deg < min_ra: continue
+            if pos_wrapped.ra.deg > max_ra: continue
+            if pos_wrapped.dec.deg < min_dec: continue
+            if pos_wrapped.dec.deg > max_dec: continue
             #print('passed trivial checks')
 
             # Now a more careful check if it is really in the polygon.
             # Check if it is on the same side of all four (directed) edges.
             # Note: The WCS may or may not include a flip, so we don't know whether these
             # should all the left or right.
-            lefts = [self._leftside(pos, p1, p2) for p1,p2 in edges]
+            lefts = [self._leftside(pos_wrapped, p1, p2) for p1,p2 in edges]
             #print('lefts = ',lefts)
             if len(set(lefts)) == 2: continue
             #print('all left or all right')
