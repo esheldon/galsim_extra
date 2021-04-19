@@ -8,3 +8,5 @@ for f in files:
     module = module.replace('.py','')
     if module != '__init__':
         exec("from . import "+module)
+
+from ._version import __version__
