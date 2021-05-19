@@ -26,14 +26,13 @@ def GenLogNormal(config, base, value_type):
     if 'rng' not in base:
         raise ValueError("No base['rng'] available for type = LogNormal")
 
-    rng = base['rng']
+    rng = galsim.config.GetRNG(config, base)
 
     req = { 'mean' : float, 'sigma' : float }
     params, safe = galsim.config.GetAllParams(config, base, req=req)
 
     mean = params['mean']
     sigma = params['sigma']
-
 
     logmean  = numpy.log(mean) - 0.5*numpy.log( 1 + sigma**2/mean**2 )
     logvar   = numpy.log(1 + sigma**2/mean**2 )
