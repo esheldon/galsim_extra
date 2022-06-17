@@ -1,5 +1,6 @@
 
 import galsim
+import numpy as np
 
 class MixedSceneBuilder(galsim.config.StampBuilder):
 
@@ -57,6 +58,26 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         # Also ignore magnify and shear, which we allow here for convenience to act on whichever
         # object ends up being chosen.
         ignore = ignore + ['objects', 'magnify', 'shear', 'obj_type']
+
+        # option to shear the full scene.
+        if config.get('shear_full_scene', True):
+            stamp_xsize, stamp_ysize, image_pos, world_pos = super(MixedSceneBuilder, self).setup(config,base,xsize,ysize,ignore,logger)
+            
+            shear = galsim.Shear(g1=float(base["stamp"]["shear"]["g1"]), g2=float(base["stamp"]["shear"]["g2"]))
+            S = shear.getMatrix()
+            print('starting shearing the full scene.')
+            print('world_pos', world_pos)
+            print('wcs', base['wcs'])
+            exit()
+            # Find the center (tangent point) of the scene in RA, DEC. 
+            scene_center = base['wcs'].toWorld()
+            u,v = scene_center.project_rad(world_pos.ra, world_pos.dec, projection='gnomonic') # tile center units in radians
+            # shearing the position. 
+            pos = np.vstack((u, v))
+            sheared_uv = np.dot(S, pos)
+            # convert sheared u,v back to sheared ra,dec
+            sheared_ra, sheared_dec = scene_center.deproject_rad(sheared_uv[0,:].astype(float), sheared_uv[1,:].astype(float), projection='gnomonic')
+                    
 
         # Now go on and do the rest of the normal setup.
         return super(MixedSceneBuilder, self).setup(config,base,xsize,ysize,ignore,logger)
