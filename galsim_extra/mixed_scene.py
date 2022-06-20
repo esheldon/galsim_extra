@@ -72,10 +72,10 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
             sheared_uv = np.dot(S, pos)
             # convert sheared u,v back to sheared ra,dec
             sheared_ra, sheared_dec = scene_center.deproject_rad(sheared_uv[0,:].astype(float), sheared_uv[1,:].astype(float), projection='gnomonic')
-            new_world_pos = galsim.CelestialCoord(sheared_ra[0]*galsim.radians, sheared_dec[0]*galsim.radians)
-            print(world_pos.ra - new_world_pos.ra, world_pos.dec - new_world_pos.dec)
+            world_pos = galsim.CelestialCoord(sheared_ra[0]*galsim.radians, sheared_dec[0]*galsim.radians)
+
         # Now go on and do the rest of the normal setup.
-        return stamp_xsize, stamp_ysize, image_pos, new_world_pos
+        return stamp_xsize, stamp_ysize, image_pos, world_pos
 
     def buildProfile(self, config, base, psf, gsparams, logger):
         obj_type = base['current_obj_type']
