@@ -66,11 +66,9 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
             shear = galsim.Shear(g1=float(base["stamp"]["shear"]["g1"]), g2=float(base["stamp"]["shear"]["g2"]))
             S = shear.getMatrix()
             print('starting shearing the full scene.')
-            print('world_pos', world_pos)
-            print('wcs', base['wcs'])
-            exit()
             # Find the center (tangent point) of the scene in RA, DEC. 
-            scene_center = base['wcs'].toWorld()
+            scene_center = base['wcs'].center
+            print('center', scene_center)
             u,v = scene_center.project_rad(world_pos.ra, world_pos.dec, projection='gnomonic') # tile center units in radians
             # shearing the position. 
             pos = np.vstack((u, v))
