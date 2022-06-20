@@ -65,20 +65,18 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
             
             shear = galsim.Shear(g1=float(base["stamp"]["shear"]["g1"]), g2=float(base["stamp"]["shear"]["g2"]))
             S = shear.getMatrix()
-            print('starting shearing the full scene.')
             # Find the center (tangent point) of the scene in RA, DEC. 
             scene_center = base['wcs'].center
-            print('center', scene_center)
             u,v = scene_center.project_rad(world_pos.ra, world_pos.dec, projection='gnomonic') # tile center units in radians
             # shearing the position. 
             pos = np.vstack((u, v))
             sheared_uv = np.dot(S, pos)
             # convert sheared u,v back to sheared ra,dec
             sheared_ra, sheared_dec = scene_center.deproject_rad(sheared_uv[0,:].astype(float), sheared_uv[1,:].astype(float), projection='gnomonic')
-                    
+            world_pos = galsim.CelestialCoord(sheared_ra*galsim.radians, sheared_dec*galsim.radians)
 
         # Now go on and do the rest of the normal setup.
-        return super(MixedSceneBuilder, self).setup(config,base,xsize,ysize,ignore,logger)
+        return stamp_xsize, stamp_ysize, image_pos, world_pos
 
     def buildProfile(self, config, base, psf, gsparams, logger):
         obj_type = base['current_obj_type']
