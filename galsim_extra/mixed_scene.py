@@ -1,6 +1,7 @@
 
 import galsim
 import numpy as np
+import coord
 
 class MixedSceneBuilder(galsim.config.StampBuilder):
 
@@ -57,22 +58,32 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         # Add objects field to the ignore list
         # Also ignore magnify and shear, which we allow here for convenience to act on whichever
         # object ends up being chosen.
-        ignore = ignore + ['objects', 'magnify', 'shear', 'obj_type']
+        ignore = ignore + ['objects', 'magnify', 'shear', 'obj_type', 'shear_scene']
 
         stamp_xsize, stamp_ysize, image_pos, world_pos = super(MixedSceneBuilder, self).setup(config,base,xsize,ysize,ignore,logger)
+        
+        if 'shear_scene' in config:
+            shear_scene = galsim.config.ParseValue(config, 'shear_scene', base, bool)[0]
+        else:
+            shear_scene = False
+        
         # option to shear the full scene.
-        if config.get('shear_full_scene', True):            
-            shear = galsim.Shear(g1=float(base["stamp"]["shear"]["g1"]), g2=float(base["stamp"]["shear"]["g2"]))
+        if shear_scene:       
+            shear = galsim.config.ParseValue(config, 'shear', base, float)[0]
             S = shear.getMatrix()
             # Find the center (tangent point) of the scene in RA, DEC. 
-            scene_center = base['wcs'].center
-            u,v = scene_center.project_rad(world_pos.ra, world_pos.dec, projection='gnomonic') # tile center units in radians
-            # shearing the position. 
-            pos = np.vstack((u, v))
-            sheared_uv = np.dot(S, pos)
-            # convert sheared u,v back to sheared ra,dec
-            sheared_ra, sheared_dec = scene_center.deproject_rad(sheared_uv[0,:].astype(float), sheared_uv[1,:].astype(float), projection='gnomonic')
-            world_pos = galsim.CelestialCoord(sheared_ra[0]*galsim.radians, sheared_dec[0]*galsim.radians)
+            scene_center = base['world_center']
+            wcs = base['coadd_wcs']
+            if wcs.isCelestial:
+                u, v = scene_center.project(world_pos, projection='gnomonic')
+                pos = galsim.Position(u.rad, v.rad)
+                sheared_pos = pos.shear(shear)
+                u2 = sheared_pos.x * coord.radians
+                v2 = sheared_pos.y * coord.radians
+                world_pos = scene_center.deproject(u2, v2, projection='gnomonic')
+            else:
+                world_pos = world_pos.shear(shear)
+            image_pos = wcs.toImage(world_pos)
 
         # Now go on and do the rest of the normal setup.
         return stamp_xsize, stamp_ysize, image_pos, world_pos
