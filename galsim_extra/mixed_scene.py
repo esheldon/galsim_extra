@@ -69,14 +69,14 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         
         # option to shear the full scene.
         if shear_scene:       
-            shear = galsim.config.ParseValue(config, 'shear', base, float)[0]
+            shear = galsim.config.ParseValue(config, 'shear', base, galsim.Shear)[0]
             S = shear.getMatrix()
             # Find the center (tangent point) of the scene in RA, DEC. 
             scene_center = base['world_center']
-            wcs = base['coadd_wcs']
+            wcs = base['wcs']
             if wcs.isCelestial:
                 u, v = scene_center.project(world_pos, projection='gnomonic')
-                pos = galsim.Position(u.rad, v.rad)
+                pos = galsim.PositionD(u.rad, v.rad)
                 sheared_pos = pos.shear(shear)
                 u2 = sheared_pos.x * coord.radians
                 v2 = sheared_pos.y * coord.radians
