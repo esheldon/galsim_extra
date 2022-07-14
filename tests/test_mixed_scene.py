@@ -4,12 +4,12 @@ import numpy as np
 import coord
 # from ..galsim_extra import MixedSceneBuilder
 
-BASE_CONFIG = {'modules': ["galsim_extra"], 
+BASE_CONFIG = {
+'modules': ["galsim_extra"], 
 
 'input' : { 'cosmos_sampler' : {'min_r50' : 0.15, 'max_r50' : 1., 'min_flux' : 2.5, 'max_flux' : 100 }}, 
 
-'image' : { 'pixel_scale' : 0.26, 'size' : 48, 'random_seed' : 1234, 'nobjects': 1, 'ra': "16:01:41.01257 hours", 
-            'dec': "66:48:10.1312 degrees"},
+'image' : { 'pixel_scale' : 0.26, 'size' : 48, 'random_seed' : 1234},
 
 'psf': {'type': 'Gaussian', 'fwhm': 0.9, 'flux': 1.0}, 
 
@@ -33,10 +33,11 @@ BASE_CONFIG = {'modules': ["galsim_extra"],
 
 def test_mixed_scene():
 
-    # Step 1. Run the above config 
+    # Step 1. Run the above config to make one stamp that has one object. 
     config = galsim.config.CopyConfig(BASE_CONFIG)
     galsim.config.Process(config)
 
+    # Step 2. From the WCS of the stamp, RA/DEC of the object, shear the center of the object.
     """
     # MixedSceneBuilder class object
     mixedscenebuilder = mixed_scene.MixedSceneBuilder(...)
@@ -45,7 +46,10 @@ def test_mixed_scene():
     # Shear scene by hand
     how do i test this function? 
     am i going to test this without using galsim? 
+    """
 
+    # Step 3. Compare the result of step 1 and step 2. 
+    """
     assert stamp_xsize == xxx
     assert stamp_ysize == yyy
     assert image_pos == zzz
