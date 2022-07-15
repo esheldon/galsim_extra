@@ -2,6 +2,7 @@
 import galsim
 import numpy as np
 import coord
+import yaml
 # from ..galsim_extra import MixedSceneBuilder
 
 BASE_CONFIG = """
@@ -195,13 +196,15 @@ def shear_positions(g1, g2, wcs, radec, world_center ):
 def test_mixed_scene():
 
     # Step 1. Run the above config to make one stamp that has one object. 
-    config1 = galsim.config.CopyConfig(BASE_CONFIG) # BASE_CONFIG is 'shear_scene': False
+    yml_conf = yaml.safe_load(BASE_CONFIG)
+    config1 = galsim.config.CopyConfig(yml_conf) # BASE_CONFIG is 'shear_scene': False
     # config1 = galsim.config.ReadConfig('/Users/masayayamamoto/Desktop/DarkEnergySurvey/demo14.yaml')
-    res_before = galsim.config.Process(config1[0])
+    res_before = galsim.config.Process(config1)
 
-    config2 = galsim.config.CopyConfig(CONFIG_2) # BASE_CONFIG is 'shear_scene': True
+    yml_conf = yaml.safe_load(CONFIG_2)
+    config2 = galsim.config.CopyConfig(yml_conf) # BASE_CONFIG is 'shear_scene': True
     # config2 = galsim.config.ReadConfig('/Users/masayayamamoto/Desktop/DarkEnergySurvey/demo14_1.yaml')
-    res_after = galsim.config.Process(config2[0])
+    res_after = galsim.config.Process(config2)
 
     # Step 2. From the WCS of the stamp, RA/DEC of the object, shear the center of the object.
     world_pos = res_before['world_pos']
