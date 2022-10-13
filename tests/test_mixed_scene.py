@@ -77,7 +77,6 @@ stamp:
         star: 0
         gal: 1
     draw_method: 'auto'
-    shear_scene: False
     shear: 
         type: G1G2
         g1: 0.02
@@ -162,7 +161,7 @@ stamp:
         star: 0
         gal: 1
     draw_method: 'auto'
-    shear_scene: True
+    shear_scene: "$@current_obj_type == 'gal'"
     shear: 
         type: G1G2
         g1: 0.02
