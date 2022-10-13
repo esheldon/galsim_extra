@@ -27,13 +27,12 @@ eval_variables :
 gal :
     # Exponential requires one of scale_radius, fwhm, or half_light_radius.
     type : Exponential
-    scale_radius : 2.7  # arcsec
-    flux : 1.e6         # counts
+    half_light_radius : 0.5  # arcsec
+    flux : 1.e4         # counts
 
 psf :
-    type : Moffat
-    beta : 2.9
-    half_light_radius : 0.7  # arcsec
+    type : Gaussian
+    fwhm : 0.9  # arcsec
 
 star:
 
@@ -79,7 +78,7 @@ stamp:
     draw_method: 'auto'
     shear: 
         type: G1G2
-        g1: 0.02
+        g1: 0.50
         g2: 0.00
     gsparams:
         maximum_fft_size: 16384
@@ -111,13 +110,12 @@ eval_variables :
 gal :
     # Exponential requires one of scale_radius, fwhm, or half_light_radius.
     type : Exponential
-    scale_radius : 2.7  # arcsec
-    flux : 1.e6         # counts
+    half_light_radius : 0.5  # arcsec
+    flux : 1.e4         # counts
 
 psf :
-    type : Moffat
-    beta : 2.9
-    half_light_radius : 0.7  # arcsec
+    type : Gaussian
+    fwhm : 0.9  # arcsec
 
 star:
 
@@ -164,7 +162,7 @@ stamp:
     shear_scene: "$@current_obj_type == 'gal'"
     shear: 
         type: G1G2
-        g1: 0.02
+        g1: 0.50
         g2: 0.00
     gsparams:
         maximum_fft_size: 16384
@@ -197,12 +195,10 @@ def test_mixed_scene():
     # Step 1. Run the above config to make one stamp that has one object. 
     yml_conf = yaml.safe_load(BASE_CONFIG)
     config1 = galsim.config.CopyConfig(yml_conf) # BASE_CONFIG is 'shear_scene': False
-    # config1 = galsim.config.ReadConfig('/Users/masayayamamoto/Desktop/DarkEnergySurvey/demo14.yaml')
     res_before = galsim.config.Process(config1)
 
     yml_conf = yaml.safe_load(CONFIG_2)
     config2 = galsim.config.CopyConfig(yml_conf) # BASE_CONFIG is 'shear_scene': True
-    # config2 = galsim.config.ReadConfig('/Users/masayayamamoto/Desktop/DarkEnergySurvey/demo14_1.yaml')
     res_after = galsim.config.Process(config2)
 
     # Step 2. From the WCS of the stamp, RA/DEC of the object, shear the center of the object.
@@ -212,14 +208,22 @@ def test_mixed_scene():
     wcs = galsim.TanWCS(aff, targ_pos)
 
     world_center = res_before['world_center']
-    x_new, y_new = shear_positions(0.02, 0.00, wcs, world_pos, world_center)
+    x_new, y_new = shear_positions(0.50, 0.00, wcs, world_pos, world_center)
 
     # Step 3. Compare the result of step 1 and step 2. 
     image_pos = wcs.toImage(res_after['world_pos'])
-
     assert image_pos.x == x_new[0]
     assert image_pos.y == y_new[0]
 
+    # Another test: Measure shapes on the unsheared positions for CONFIG1 and on the sheared positions for CONFIG2
+    from math import isclose
+    image = res_after['current_stamp']
+    moms = galsim.hsm.FindAdaptiveMom(image)
+
+    assert isclose(0.50, moms.observed_shape.e1, abs_tol=1e-2)
+    assert isclose(0.00, moms.observed_shape.e2, abs_tol=1e-2)
+    assert isclose(image_pos.x, moms.moments_centroid.x, abs_tol=1e-5)
+    assert isclose(image_pos.y, moms.moments_centroid.y, abs_tol=1e-5)
 
 if __name__ == '__main__':
     test_mixed_scene()
