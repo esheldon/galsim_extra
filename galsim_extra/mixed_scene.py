@@ -70,7 +70,6 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
         # option to shear the full scene.
         if shear_scene:       
             shear = galsim.config.ParseValue(config, 'shear', base, galsim.Shear)[0]
-            S = shear.getMatrix()
             # Find the center (tangent point) of the scene in RA, DEC. 
             scene_center = base['world_center']
             wcs = base['wcs']
