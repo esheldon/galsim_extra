@@ -81,7 +81,7 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
                 v2 = sheared_pos.y * coord.radians
                 world_pos = scene_center.deproject(u2, v2, projection='gnomonic')
             else:
-                world_pos = world_pos.shear(shear)
+                world_pos = (world_pos - scene_center).shear(shear) + scene_center
             image_pos = wcs.toImage(world_pos)
 
         # Now go on and do the rest of the normal setup.
