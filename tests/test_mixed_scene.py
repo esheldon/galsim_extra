@@ -172,9 +172,6 @@ gal:
   type: Exponential
   half_light_radius: 0.5
   flux: 1000
-  shift:
-    type: RandomCircle
-    radius: 0.1  # arcsec
 
 image:
   type: Scattered
@@ -226,10 +223,10 @@ def test_mixed_scene_flat():
     assert np.isclose(mom1.moments_sigma, mom2.moments_sigma, rtol=1.e-3)
     assert np.isclose(mom1.moments_amp, mom2.moments_amp, rtol=1.e-3)
 
-    assert np.isclose(image_pos.x, mom1.moments_centroid.x, atol=0.2)
-    assert np.isclose(image_pos.y, mom1.moments_centroid.y, atol=0.2)
-    assert np.isclose(sheared_pos.x, mom2.moments_centroid.x, atol=0.2)
-    assert np.isclose(sheared_pos.y, mom2.moments_centroid.y, atol=0.2)
+    assert np.isclose(image_pos.x, mom1.moments_centroid.x, atol=1.e-3)
+    assert np.isclose(image_pos.y, mom1.moments_centroid.y, atol=1.e-3)
+    assert np.isclose(sheared_pos.x, mom2.moments_centroid.x, atol=1.e-3)
+    assert np.isclose(sheared_pos.y, mom2.moments_centroid.y, atol=1.e-3)
 
 
 if __name__ == '__main__':
