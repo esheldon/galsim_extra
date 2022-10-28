@@ -73,10 +73,7 @@ class MixedSceneBuilder(galsim.config.StampBuilder):
             # Find the center (tangent point) of the scene in RA, DEC. 
             scene_center = base['world_center']
             wcs = base['wcs']
-            # world_pos might not be defined yet, so if necessary get it from image_pos.
-            if image_pos is not None and world_pos is None:
-                world_pos = wcs.toWorld(image_pos)
-            if wcs.isCelestial():
+            if wcs.isCelestial:
                 u, v = scene_center.project(world_pos, projection='gnomonic')
                 pos = galsim.PositionD(u.rad, v.rad)
                 sheared_pos = pos.shear(shear)
