@@ -33,7 +33,7 @@ def build_lattice(full_xsize, full_ysize, sep, scale, v1, v2, rot=None, border_r
     x_lattice = v1[0] * x_square + v2[0] * y_square
     y_lattice = v1[1] * x_square + v2[1] * y_square
 
-    # construct the roation matrix and rotate the lattice points
+    # construct the rotation matrix and rotate the lattice points
     rotation = np.asarray(
         [
             [np.cos(np.radians(rot)), -np.sin(np.radians(rot))],
@@ -82,7 +82,7 @@ class LatticeImageBuilder(ImageBuilder):
         """
         logger.debug('image %d: Building Lattice: image, obj = %d,%d',image_num,image_num,obj_num)
 
-        extra_ignore = [ 'image_pos' ] # We create this below, so on subequent passes, we ignore it.
+        extra_ignore = [ 'image_pos' ] # We create this below, so on subsequent passes, we ignore it.
         req = { 'sep' : float , 'xsize' : int , 'ysize' : int }
         opt = { 'rotation' : float , "border_ratio" : float }
         params = GetAllParams(config, base, req=req, opt=opt, ignore=ignore+extra_ignore)[0]
