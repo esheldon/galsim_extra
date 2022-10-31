@@ -2,7 +2,6 @@ import logging
 import numpy as np
 
 from galsim.config.image import ImageBuilder, FlattenNoiseVariance, RegisterImageType
-from galsim.config.util import GetRNG
 from galsim.config.value import ParseValue, GetAllParams
 from galsim.config.stamp import BuildStamps, _ParseDType
 from galsim.config.noise import AddSky, AddNoise
@@ -137,7 +136,6 @@ class LatticeImageBuilder(ImageBuilder):
         base['current_image'] = full_image
 
         # Make a list of ix,iy values according to the specified order:
-        rng = np.random.default_rng()  # TODO: how to best handle RNGs with galsim?
         # TODO: pull lattice vectors from config
         v1 = np.asarray([1, 0], dtype=float)
         v2 = np.asarray([np.cos(np.radians(120)), np.sin(np.radians(120))], dtype=float)
