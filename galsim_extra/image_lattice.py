@@ -138,7 +138,16 @@ class LatticeImageBuilder(ImageBuilder):
         # TODO: pull lattice vectors from config
         v1 = np.asarray([1, 0], dtype=float)
         v2 = np.asarray([np.cos(np.radians(120)), np.sin(np.radians(120))], dtype=float)
-        x_lattice, y_lattice = build_lattice(full_xsize-1, full_ysize-1, self.sep, base["pixel_scale"], v1, v2, self.rotation, self.border_ratio)
+        x_lattice, y_lattice = build_lattice(
+            full_xsize,
+            full_ysize,
+            self.sep,
+            base["pixel_scale"],
+            v1,
+            v2,
+            self.rotation,
+            self.border_ratio
+        )
         nobjects = len(x_lattice)
 
         # Define a 'image_pos' field so the stamps can set their position appropriately in case
