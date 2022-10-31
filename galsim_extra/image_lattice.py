@@ -87,7 +87,6 @@ class LatticeImageBuilder(ImageBuilder):
         opt = { 'rotation' : float , "border_ratio" : float }
         params = GetAllParams(config, base, req=req, opt=opt, ignore=ignore+extra_ignore)[0]
 
-        # TODO: is this the preferred way of propagating these parameters from the config?
         self.sep = params["sep"]
         self.rotation = params.get("rotation", 0)
         self.border_ratio = params.get("border_ratio", 1)
