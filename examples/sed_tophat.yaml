@@ -1,0 +1,108 @@
+modules:
+  - galsim_extra
+
+stamp:
+  type: Basic
+
+psf:
+  type: ChromaticAtmosphere
+  base_profile:
+      type: Gaussian
+      fwhm: 0.9
+  base_wavelength: 500
+  zenith_angle: 0 deg  # set to 0 to disable DCR
+  parallactic_angle: 0 deg  # set to 0 to disable DCR
+
+gal:
+  type: Exponential
+  half_light_radius: 0.5
+  signal_to_noise: 1e6
+
+  sed:
+    type: Tophat
+    bins: [[  1000.        ,   1246.        ],
+           [  1246.        ,   1552.        ],
+           [  1552.        ,   1933.        ],
+           [  1933.        ,   2407.        ],
+           [  2407.        ,   2998.        ],
+           [  2998.        ,   3184.        ],
+           [  3184.        ,   3381.        ],
+           [  3381.        ,   3590.        ],
+           [  3590.        ,   3812.        ],
+           [  3812.        ,   4048.        ],
+           [  4048.        ,   4299.        ],
+           [  4299.        ,   4565.        ],
+           [  4565.        ,   4848.        ],
+           [  4848.        ,   5148.        ],
+           [  5148.        ,   5467.        ],
+           [  5467.        ,   5806.        ],
+           [  5806.        ,   6166.        ],
+           [  6166.        ,   6548.        ],
+           [  6548.        ,   6954.        ],
+           [  6954.        ,   7385.        ],
+           [  7385.        ,   7843.        ],
+           [  7843.        ,   8329.        ],
+           [  8329.        ,   8846.        ],
+           [  8846.        ,   9395.        ],
+           [  9395.        ,   9978.        ],
+           [  9978.        ,  11467.        ],
+           [ 11467.        ,  13177.        ],
+           [ 13177.        ,  15143.        ],
+           [ 15143.        ,  17402.        ],
+           [ 17402.        ,  19998.        ]]
+    values: [   1697.29638672 ,
+                6742.60693359 ,
+               11690.51757812 ,
+               15101.17285156 ,
+               24002.078125   ,
+               34242.99609375 ,
+               38869.51953125 ,
+               44496.08984375 ,
+               56795.78125    ,
+               94659.6328125  ,
+              112790.6796875  ,
+              119248.1640625  ,
+              132234.34375    ,
+              135188.078125   ,
+              144042.578125   ,
+              152180.203125   ,
+              160322.890625   ,
+              167078.15625    ,
+              174436.3125     ,
+              175536.078125   ,
+              182712.21875    ,
+              190624.671875   ,
+              193113.875      ,
+              195552.484375   ,
+              198466.3125     ,
+              199944.640625   ,
+              200559.03125    ,
+              200647.5625     ,
+              201416.640625   ,
+              202550.578125   ]
+    wave_type: Ang
+    flux_type: flambda
+    norm_flux_density: 1.0
+    norm_wavelength: 500
+
+  redshift: 0.0
+
+image:
+  type: Tiled
+  nx_tiles: 10
+  ny_tiles: 10
+  stamp_xsize: 32
+  stamp_ysize: 32
+  pixel_scale: 0.2  # arcsec / pixel
+
+  bandpass:
+    file_name: "LSST_g.dat"
+    wave_type: nm   # Wavelength in these files is in nm.
+    thin: 1.e-4
+
+  noise:
+    type: Gaussian
+    sigma: 0.02
+
+output:
+  file_name: sed_tophat.fits
