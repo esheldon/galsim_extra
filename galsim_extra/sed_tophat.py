@@ -1,9 +1,8 @@
 import logging
 
 from galsim.config.util import LoggerWrapper
-from galsim.config.value import ParseValue, GetAllParams, GetIndex
-from galsim.config.input import RegisterInputConnectedType
-from galsim.errors import GalSimConfigError, GalSimConfigValueError
+from galsim.config.value import GetAllParams
+from galsim.errors import GalSimConfigError
 from galsim.sed import SED
 
 from galsim.config.sed import SEDBuilder, RegisterSEDType
