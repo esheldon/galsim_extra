@@ -10,7 +10,7 @@ class FITSCatalog(Catalog):
     _req_params = { 'file_name' : str }
     _opt_params = { 'dir' : str , 'hdu' : int , 'query' : str }
 
-    def __init__(self, file_name, dir=None, file_type=None, comments='#', hdu=1, query=None):
+    def __init__(self, file_name, dir=None, hdu=1, query=None):
 
         # First build full file_name
         self.file_name = file_name.strip()
