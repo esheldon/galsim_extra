@@ -114,6 +114,7 @@ class WideScatteredBuilder(galsim.config.image_scattered.ScatteredImageBuilder):
         #print('config = ',galsim.config.CleanConfig(config))
         for k in range(self.nobjects):
             base['obj_num'] = obj_num + k
+            obj_type, _ = galsim.config.ParseValue(base["stamp"], "obj_type", base, str)  # manually computing this ensures that we have @stamp.obj_type available for computing appropriate world_pos in the image
             pos = galsim.config.ParseWorldPos(config, 'world_pos', base, logger)
             #wrap the ra using the same center as we did
             #for the chip corners, and use this wrapped versions
